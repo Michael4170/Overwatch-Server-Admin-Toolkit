@@ -1,8 +1,9 @@
-OVERWATCH — Server Admin Toolkit
-A lightweight, server-side admin toolkit for Arma Reforger dedicated servers. No client download, no dependencies — install it on your server and it works for every player who joins.
-Features
+**OVERWATCH — Server Admin Toolkit**
 
-Tiered permissions — UID-based admin whitelist with Moderator, Admin and Owner tiers. Stored in a simple JSON file in your server profile; edit it directly or manage admins in-game.
+A lightweight, server-side admin toolkit for Arma Reforger dedicated servers. No client download, no dependencies — install it on your server and it works for every player who joins.
+
+**Features**
+- Tiered permissions — UID-based admin whitelist with Moderator, Admin and Owner tiers. Stored in a simple JSON file in your server profile; edit it directly or manage admins in-game.
 Moderation — kick and ban with reasons, temporary bans with automatic expiry.
 Player management — heal, kill, teleport to player, bring player to you, detailed player info (UID, platform, ping, faction, session time).
 Communication — server-wide broadcasts for announcements and restart warnings.
