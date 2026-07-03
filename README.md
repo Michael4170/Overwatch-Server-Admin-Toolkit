@@ -1,3 +1,5 @@
+"C:\Users\micha\Documents\Overwatch - Server Admin Toolkit\Overwatch_Banner.png"
+
 **OVERWATCH — Server Admin Toolkit**
 
 A lightweight, server-side admin toolkit for Arma Reforger dedicated servers. No client download, no dependencies — install it on your server and it works for every player who joins.
