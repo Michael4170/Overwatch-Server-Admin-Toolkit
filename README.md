@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="images/Overwatch_Banner.png" width="600" alt="Overwatch Banner">
-</p>
+![Overwatch Banner](images/Overwatch_Banner.png)
 
 **OVERWATCH — Server Admin Toolkit**
 
