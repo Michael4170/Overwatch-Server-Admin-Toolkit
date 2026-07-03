@@ -1,4 +1,4 @@
-![Overwatch Banner](images/Overwatch_Banner.png)
+![Overwatch Banner](Overwatch_Banner.png)
 
 **OVERWATCH — Server Admin Toolkit**
 
