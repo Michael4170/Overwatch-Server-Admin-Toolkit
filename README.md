@@ -1,4 +1,4 @@
-"C:\Users\micha\Documents\Overwatch - Server Admin Toolkit\Overwatch_Banner.png"
+![Overwatch Banner](images/Overwatch_Banner.png)
 
 **OVERWATCH — Server Admin Toolkit**
 
