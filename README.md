@@ -24,4 +24,4 @@ A lightweight, server-side admin toolkit for Arma Reforger dedicated servers. No
 **Compatibility**
 Pure server-side component — works alongside any game mode or mod set, and safe to add or remove without affecting saves. Built and tested against the current Reforger release; version compatibility is tracked on the GitHub page.
 **Roadmap**
-In-game admin menu with spectate mode, scheduled restart warnings, MOTD on join, and Discord webhook logging are in active development. Suggestions and bug reports welcome via [https://discord.gg/SsM7r8b7ae]
+In-game admin menu with spectate mode, scheduled restart warnings, MOTD on join, and Discord webhook logging are in active development. Suggestions and bug reports welcome via [https://discord.gg/SsM7r8b7ae] or through the Github page.
