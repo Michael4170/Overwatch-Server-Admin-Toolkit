@@ -186,6 +186,9 @@ Bans are enforced in two layers: the ban is recorded in `$profile:Overwatch_Bans
 and checked when a player's identity is verified on connect, **and** the remaining
 duration is passed to the engine's reconnect timeout at kick time.
 
+Banned players see Reforger's generic "kicked" message rather than a ban reason. 
+The ban itself works correctly; only the notification is generic.
+
 Overwatch keeps its own ban store rather than using the engine's backend ban service, so
 bans work on local and offline-hosted servers.
 
