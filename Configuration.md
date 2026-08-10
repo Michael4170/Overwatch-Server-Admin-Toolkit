@@ -38,7 +38,7 @@ game mode, so they come up automatically on any scenario that inherits from it:
 | Component | Responsibility |
 |---|---|
 | `OW_PermissionManagerComponent` | Loads the admin config, answers all permission checks |
-| `OW_CommandRouterComponent` | Parses `!ow` chat, gates by tier, dispatches commands |
+| `OW_CommandRouterComponent` | Parses `/ow` chat, gates by tier, dispatches commands |
 | `OW_BanManagerComponent` | Loads and enforces the ban list, performs kicks |
 
 Confirm all three initialised by watching the server log at startup:
