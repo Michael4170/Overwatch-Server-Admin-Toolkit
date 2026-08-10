@@ -85,12 +85,12 @@ rather than guessing. Only connected players can be resolved by name.
 
 ## General
 
-### `!ow help` — *alias `commands`* — Tier 1
+### `/ow help` — *alias `commands`* — Tier 1
 
 Lists every command **the caller is actually allowed to use**, with usage strings. A
 Moderator and an Owner see different lists, so the output doubles as a tier check.
 
-### `!ow admins` — Tier 1
+### `/ow admins` — Tier 1
 
 Lists the configured admin roster with display names and tiers, e.g. `Michael [T3]`.
 UIDs are deliberately **not** printed in-game.
@@ -99,12 +99,12 @@ UIDs are deliberately **not** printed in-game.
 
 ## Information
 
-### `!ow players` — *aliases `list`, `who`* — Tier 1
+### `/ow players` — *aliases `list`, `who`* — Tier 1
 
 Flat roster of connected players as `id: name`. This is the lookup step before any
 targeted command — IDs are always unambiguous where names may not be.
 
-### `!ow playerinfo [player]` — *aliases `info`, `pi`* — Tier 1
+### `/ow playerinfo [player]` — *aliases `info`, `pi`* — Tier 1
 
 Detailed readout for one player: player ID, identity UID, Overwatch tier, faction, and
 alive/dead state.
@@ -113,13 +113,13 @@ alive/dead state.
 
 ## Player management
 
-### `!ow heal [player|me]` — Tier 1
+### `/ow heal [player|me]` — Tier 1
 
 Fully heals the target's character — all hitzones, bleeding included. With no argument,
 heals the caller. Fails clearly if the target has no controlled character (dead or not
 yet spawned).
 
-### `!ow kill [player]` — Tier 2
+### `/ow kill [player]` — Tier 2
 
 Kills the target's character. The death is attributed to the issuing admin as a Game
 Master instigator, so it appears correctly in the kill feed and logs.
@@ -133,11 +133,11 @@ tier. The command verifies the target actually died and reports if it didn't.
 
 Both teleport commands require the *other* player to be at a strictly lower tier.
 
-### `!ow goto [player]` — *alias `tp`* — Tier 2
+### `/ow goto [player]` — *alias `tp`* — Tier 2
 
 Teleports **you** to the target player.
 
-### `!ow bring [player]` — *alias `summon`* — Tier 2
+### `/ow bring [player]` — *alias `summon`* — Tier 2
 
 Teleports the target player **to you**.
 
@@ -145,20 +145,20 @@ Teleports the target player **to you**.
 
 ## Communication
 
-### `!ow broadcast [message]` — *aliases `bc`, `announce`* — Tier 2
+### `/ow broadcast [message]` — *aliases `bc`, `announce`* — Tier 2
 
 Sends a message to every connected player. Everything after the command word is treated
 as the message, so no quoting is needed.
 
 ```
-!ow broadcast Server restarting in 10 minutes.
+/ow broadcast Server restarting in 10 minutes.
 ```
 
 ---
 
 ## Moderation
 
-### `!ow kick [player] [reason]` — Tier 2
+### `/ow kick [player] [reason]` — Tier 2
 
 Immediately disconnects a player. The first argument is the target; everything after it
 is the reason. If no reason is given, `No reason given` is recorded.
@@ -166,13 +166,13 @@ is the reason. If no reason is given, `No reason given` is recorded.
 The kick is written to the server log with the target's name, UID, the issuing admin and
 the reason.
 
-### `!ow ban [player] [duration] [reason]` — Tier 2
+### `/ow ban [player] [duration] [reason]` — Tier 2
 
 Bans a player and kicks them immediately.
 
 ```
-!ow ban Bob 7d griefing
-!ow ban 4 perm cheating
+/ow ban Bob 7d griefing
+/ow ban 4 perm cheating
 ```
 
 **The duration argument is mandatory.** There is no way to hand out a permanent ban by
@@ -198,12 +198,12 @@ The ban itself works correctly; only the notification is generic.
 Overwatch keeps its own ban store rather than using the engine's backend ban service, so
 bans work on local and offline-hosted servers.
 
-### `!ow unban [uid|name]` — Tier 2
+### `/ow unban [uid|name]` — Tier 2
 
 Lifts a ban by identity UID or by the name recorded at ban time. Use `!ow bans` to see
 the list first.
 
-### `!ow bans` — Tier 2
+### `/ow bans` — Tier 2
 
 Lists all active bans: name, UID, reason, who issued it, and remaining time. Expired
 entries are ignored.
