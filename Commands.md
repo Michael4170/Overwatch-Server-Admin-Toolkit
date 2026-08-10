@@ -11,8 +11,9 @@ command, so responses stay readable against terrain and don't leak into public c
 !ow <command> [arguments]
 /ow <command> [arguments]
 ```
-/ow <command> — recommended, hidden from chat
 
+
+/ow <command> — recommended, hidden from chat
 !ow <command> — still works, visible to other players
 
 Typing a bare `!ow` is treated as `!ow help`. Command names and aliases are
