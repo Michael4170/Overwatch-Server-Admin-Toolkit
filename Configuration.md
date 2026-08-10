@@ -176,7 +176,7 @@ admin in `Overwatch_Admins.json` at tier 3 as well, so both hierarchies agree.
 ## Ban storage
 
 Bans are written to `$profile:Overwatch_Bans.json`, created and maintained automatically.
-Hand-editing it is supported but unnecessary — `!ow ban`, `!ow unban` and `!ow bans`
+Hand-editing it is supported but unnecessary — `/ow ban`, `/ow unban` and `/ow bans`
 cover normal operation.
 
 Overwatch keeps its own ban store rather than using the engine's backend ban service, so
@@ -216,7 +216,7 @@ own. Delete the file to regenerate the template, or fix the JSON, then restart.
 | Every command denied, including your own | Config failed to load, or your UID isn't in it. Check the startup log. |
 | `Loaded 0 admin entries` | The placeholder UID was never replaced. |
 | `kick` / `ban` say *managers unavailable* | The ban manager didn't initialise — usually a custom game mode that doesn't inherit from the base. |
-| No response at all to `!ow` | Router didn't start — check for `Command router ready` at startup. |
+| No response at all to `!ow` or `/ow` | Router didn't start — check for `Command router ready` at startup. |
 | Config edits do nothing | Changes require a server restart. |
 | Fewer than 13 commands registered | A command failed to register; check for duplicate-name warnings in the log. |
 
