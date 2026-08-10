@@ -67,19 +67,19 @@ rather than guessing. Only connected players can be resolved by name.
 
 | Command | Aliases | Tier | Usage |
 |---|---|:---:|---|
-| `help` | `commands` | 1 | `!ow help` |
-| `admins` | — | 1 | `!ow admins` |
-| `players` | `list`, `who` | 1 | `!ow players` |
-| `playerinfo` | `info`, `pi` | 1 | `!ow playerinfo [player]` |
-| `heal` | — | 1 | `!ow heal [player\|me]` |
-| `kill` | — | 2 | `!ow kill [player]` |
-| `goto` | `tp` | 2 | `!ow goto [player]` |
-| `bring` | `summon` | 2 | `!ow bring [player]` |
-| `broadcast` | `bc`, `announce` | 2 | `!ow broadcast [message]` |
-| `kick` | — | 2 | `!ow kick [player] [reason]` |
-| `ban` | — | 2 | `!ow ban [player] [duration] [reason]` |
-| `unban` | — | 2 | `!ow unban [uid\|name]` |
-| `bans` | — | 2 | `!ow bans` |
+| `help` | `commands` | 1 | `/ow help` |
+| `admins` | — | 1 | `/ow admins` |
+| `players` | `list`, `who` | 1 | `/ow players` |
+| `playerinfo` | `info`, `pi` | 1 | `/ow playerinfo [player]` |
+| `heal` | — | 1 | `/ow heal [player\|me]` |
+| `kill` | — | 2 | `/ow kill [player]` |
+| `goto` | `tp` | 2 | `/ow goto [player]` |
+| `bring` | `summon` | 2 | `/ow bring [player]` |
+| `broadcast` | `bc`, `announce` | 2 | `/ow broadcast [message]` |
+| `kick` | — | 2 | `/ow kick [player] [reason]` |
+| `ban` | — | 2 | `/ow ban [player] [duration] [reason]` |
+| `unban` | — | 2 | `/ow unban [uid\|name]` |
+| `bans` | — | 2 | `/ow bans` |
 
 ---
 
