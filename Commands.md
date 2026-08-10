@@ -8,8 +8,8 @@ Replies come back as an on-screen hint panel visible only to the admin who issue
 command, so responses stay readable against terrain and don't leak into public chat.
 
 ```
-!ow <command> [arguments]
 /ow <command> [arguments]
+!ow <command> [arguments]
 ```
 
 
