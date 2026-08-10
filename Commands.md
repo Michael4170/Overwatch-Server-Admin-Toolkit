@@ -1,6 +1,6 @@
 # Overwatch — Command Reference
 
-All Overwatch commands are typed into normal in-game chat and are prefixed with `!ow`.
+All Overwatch commands are typed into normal in-game chat and are prefixed with `!ow` or `/ow`.
 Everything is parsed, permission-checked and executed **server-side only** — the client
 never decides whether a command is allowed.
 
