@@ -1,241 +1,192 @@
-# Overwatch — Configuration Guide
+# Overwatch — Setup and Configuration
 
-Everything Overwatch needs lives on the server. There is no client-side setup, no
-optional client mod, and nothing for your players to download beyond the automatic mod
-sync every Reforger server already performs.
-
-Setup is two steps: **load the mod → add your UID.**
+Built for Arma Reforger **1.8**. Server-side: no separate client download beyond the
+normal mod sync.
 
 ---
 
-## 1. Load the mod
+## 1. Install
 
-Add Overwatch to the `mods` array in your server config:
+Add the mod to your server's mod list.
+
+## 2. Add the components
+
+Open your GameMode prefab and add all three:
+
+- `OW_PermissionManagerComponent`
+- `OW_CommandRouterComponent`
+- `OW_BanManagerComponent`
+
+Miss one and commands will report which manager is unavailable.
+
+## 3. First run
+
+Start the server once. `Overwatch_Admins.json` is generated in your server profile
+directory with a placeholder entry.
+
+Find your Identity UID in the server log when you connect:
+
+```
+### Updating player: PlayerId=1, Name=YourName, IdentityId=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+The `IdentityId` value is what goes in the config. Replace the placeholder, set tier 3,
+and restart.
+
+Confirm it worked — the log should show:
+
+```
+[Overwatch] Loaded 1 admin entries from config.
+[Overwatch] Local tier received: 3 (Owner).
+```
+
+---
+
+## Admin config — `$profile:Overwatch_Admins.json`
 
 ```json
 {
-  "game": {
-    "mods": [
-      {
-        "modId": "REPLACE_WITH_WORKSHOP_ID",
-        "name": "Overwatch — Server Admin Toolkit"
-      }
-    ]
-  }
+    "version": 1,
+    "admins": {
+        "bbe7b313-580b-4350-9709-18583139e0f7": { "tier": 3, "name": "Michael" },
+        "a1c2e4f6-1234-5678-9abc-def012345678": { "tier": 1, "name": "SomeModerator" }
+    }
 }
 ```
 
-Clients receive the mod automatically on connect. Nothing else in your server config
-needs to change.
+| Tier | Role | Gets |
+|---|---|---|
+| 1 | Moderator | Informational and non-destructive commands |
+| 2 | Admin | Everything above, plus destructive and moderation commands |
+| 3 | Owner | Everything |
+
+`name` is a human-readable label only. All checks are against the UID.
+
+The file is read on server start. Editing it while the server runs has no effect until
+restart.
 
 ---
 
-## 2. Verify it loaded
+## Ban list — `$profile:Overwatch_Bans.json`
 
-**There is nothing to attach.** Overwatch ships its three components already on the base
-game mode, so they come up automatically on any scenario that inherits from it:
+Created when the first ban is issued. Expired bans are pruned on start.
 
-| Component | Responsibility |
+```json
+{
+    "version": 1,
+    "bans": {
+        "a1c2e4f6-1234-5678-9abc-def012345678": {
+            "name": "Griefer123",
+            "reason": "Team killing",
+            "bannedBy": "Michael",
+            "bannedByUid": "bbe7b313-580b-4350-9709-18583139e0f7",
+            "bannedAt": 1753660800,
+            "expiresAt": 1754265600
+        }
+    }
+}
+```
+
+`expiresAt` of `0` means permanent. Timestamps are Unix seconds (UTC).
+
+Editing this file by hand works, but the server only reads it on start.
+
+---
+
+## Config overrides
+
+Two vanilla configs need overriding. Use **right-click → Override in [your addon]** in
+the Resource Browser — this preserves the GUID, which is how the engine identifies a
+replacement. Duplicating instead creates an unrelated file the engine will ignore.
+
+Overridden files show a puzzle icon in the Resource Browser.
+
+### `Configs/System/chimeraMenus.conf` — the admin menu
+
+Add one Menu Preset entry:
+
+| Field | Value |
 |---|---|
-| `OW_PermissionManagerComponent` | Loads the admin config, answers all permission checks |
-| `OW_CommandRouterComponent` | Parses `/ow` chat, gates by tier, dispatches commands |
-| `OW_BanManagerComponent` | Loads and enforces the ban list, performs kicks |
+| Name | `OW_AdminMenu` |
+| Layout | `UI/layouts/OW_AdminMenu.layout` (drag it in, do not type it) |
+| Action Context | `MenuContext` |
+| Class | `OW_AdminMenu` |
 
-Confirm all three initialised by watching the server log at startup:
+The name must match the `modded enum ChimeraMenuPreset` value in `OW_MenuPresets.c`.
+If it does not, the log shows `Menu preset 'OW_AdminMenu' not found!` at startup.
 
-```
-[Overwatch] Loaded 2 admin entries from config.
-[Overwatch] Command router ready — 13 commands registered.
-[Overwatch] No ban list found — starting with an empty list.
-```
+### `Configs/System/Actions/PlayerListActions.conf` — player list actions
 
-If those lines never appear, your scenario is almost certainly running a custom game mode
-prefab that doesn't derive from the base one. In that case — and only that case — add the
-three components to your own game mode prefab manually.
+Add an entry per action. Classes:
 
----
+- `OW_HealPlayerListAction`
+- `OW_KillPlayerListAction`
+- `OW_GotoPlayerListAction`
+- `OW_BringPlayerListAction`
+- `OW_KickPlayerListAction`
+- `OW_BanPlayerListAction`
 
-## 3. Configure admins
+Set **Action Name** on each — this is what admins see, e.g. `Overwatch: Heal`.
 
-### First run
+`OW_KickPlayerListAction` has a configurable **reason**.
 
-Start the server once with no config present. Overwatch writes a template to the profile
-directory and **grants nobody anything** until you edit it:
+`OW_BanPlayerListAction` has a configurable **duration** and **reason**. A context menu
+cannot prompt for a duration, so register one entry per duration you want:
 
-```
-[Overwatch] No admin config found. Creating default at
-            $profile:Overwatch_Admins.json — add your UID and restart.
-```
+| Duration | Suggested name |
+|---|---|
+| `1h` | Overwatch: Ban 1h |
+| `24h` | Overwatch: Ban 24h |
+| `7d` | Overwatch: Ban 7d |
+| `perm` | Overwatch: Ban permanently |
 
-The generated file looks like this:
+Make sure the name and the duration agree — nothing enforces it, and an entry labelled
+"Ban 1h" that actually bans for a week is a nasty surprise.
 
-```json
-{
-  "version": 1,
-  "admins": {
-    "PASTE_YOUR_IDENTITY_UID_HERE": {
-      "tier": 3,
-      "name": "REPLACE_WITH_YOUR_NAME"
-    }
-  }
-}
-```
-
-The placeholder key is deliberately ignored on load, with a warning — a template left
-unedited never becomes a working admin entry.
-
-`$profile:` resolves to whatever directory your server was launched with via the
-`-profile` parameter.
-
-### File format
-
-The `admins` object is keyed by **identity UID**. Each entry carries a numeric tier and
-a display label:
-
-```json
-{
-  "version": 1,
-  "admins": {
-    "bbe7b313-580b-4350-9709-18583139e0f7": {
-      "tier": 3,
-      "name": "Michael"
-    },
-    "a91c4f22-7d10-4e83-b5c2-9f0e11d47a3b": {
-      "tier": 2,
-      "name": "Dave"
-    },
-    "3f8b0c15-2a44-4d91-8e77-c0b5e2194d6a": {
-      "tier": 1,
-      "name": "Sam"
-    }
-  }
-}
-```
-
-| Field | Type | Notes |
-|---|---|---|
-| *(key)* | string | Identity UID. The only thing that actually grants permission. |
-| `tier` | int | `1` Moderator, `2` Admin, `3` Owner |
-| `name` | string | Label only — shown by `!ow admins`. Never used for matching. |
-
-The `name` field has **no security function whatsoever**. Renaming an entry changes
-nothing; only the UID key matters.
-
-### Finding a UID
-
-- **From the server console** — identity IDs appear in the connection log lines when a
-  player joins. The exact format varies between game builds.
-- **From `!ow playerinfo [player]`** — the cleanest route once you have one admin
-  configured. This is how you'd add everyone after yourself.
-- Overwatch's own log lines include the UID on every command, so a single command from a
-  prospective moderator surfaces theirs.
-
-Bootstrapping the first Owner is the one case where you need the server console, since
-you can't run `playerinfo` before you have any permissions.
-
-### Applying changes
-
-The config is read **once, at game mode start**. Editing the JSON on a running server has
-no effect until restart.
+Consider whether "Ban permanently" belongs in a context menu at all. There is no
+confirmation step, and it is one misclick from the entry above it.
 
 ---
 
-## Tiers
+## Failure modes
 
-| Tier | Name | Grants |
-|:---:|---|---|
-| 0 | *(player)* | Nothing. Any `!ow` command returns a permission denial. |
-| 1 | Moderator | `help`, `admins`, `players`, `playerinfo`, `heal` |
-| 2 | Admin | The above plus `kill`, `goto`, `bring`, `broadcast`, `kick`, `ban`, `unban`, `bans` |
-| 3 | Owner | Everything, and the only tier that can action an Admin |
+**A malformed `Overwatch_Admins.json`** grants nobody anything, and logs an error. This
+is deliberate — a corrupt config must never silently grant access.
 
-**Targeting rule:** commands that act on another player require that player to be at a
-*strictly lower* tier. An Admin cannot kick, ban or kill another Admin. Give tier 3 only
-to people you'd trust to action your own account.
+**A malformed `Overwatch_Bans.json`** bans nobody, and logs an error. Also deliberate,
+in the opposite direction — a corrupt file must never lock your players out.
 
-### Overwatch tiers are not server admin
-
-Overwatch is completely parallel to Reforger's built-in admin system. It never reads or
-writes the engine's admin list.
-
-- An Overwatch Moderator is, to the engine, an ordinary player — **no Game Master, no
-  vanilla admin tools.**
-- A server config admin has **zero** Overwatch commands unless their UID is also in
-  `Overwatch_Admins.json`.
-
-This is the point of the design: you can hand someone `heal` and the player roster
-without handing them the world editor.
-
-**One gotcha worth acting on.** Overwatch's tier checks only know about Overwatch tiers.
-A vanilla server admin who isn't listed in your JSON is tier 0 to Overwatch, which means
-an Overwatch Admin can kick or ban them. The fix is procedural: list every server config
-admin in `Overwatch_Admins.json` at tier 3 as well, so both hierarchies agree.
-
----
-
-## Ban storage
-
-Bans are written to `$profile:Overwatch_Bans.json`, created and maintained automatically.
-Hand-editing it is supported but unnecessary — `/ow ban`, `/ow unban` and `/ow bans`
-cover normal operation.
-
-Overwatch keeps its own ban store rather than using the engine's backend ban service, so
-bans function on locally hosted and offline servers where that service is unavailable.
-
-Enforcement is two-layered: the ban is checked when a connecting player's identity is
-verified, **and** the remaining duration is handed to the engine's reconnect timeout at
-kick time.
-
----
-
-## Failure behaviour
-
-The two config files fail in **opposite directions**, deliberately:
-
-| File | On corruption | Reasoning |
-|---|---|---|
-| `Overwatch_Admins.json` | Fails **closed** — nobody has permissions | A broken file must never grant power |
-| `Overwatch_Bans.json` | Fails **open** — nobody is banned | A broken file must never lock out your playerbase |
-
-Both log loudly. Neither silently half-loads.
-
-```
-[Overwatch] FAILED to parse Overwatch_Admins.json — file is malformed.
-            NO permissions granted. Fix or delete the file and restart.
-```
-
-If you ever see that line, every `!ow` command on the server is denied — including your
-own. Delete the file to regenerate the template, or fix the JSON, then restart.
+Both directions mean the same thing: a broken config never wrongly punishes anyone.
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Cause |
-|---|---|
-| Every command denied, including your own | Config failed to load, or your UID isn't in it. Check the startup log. |
-| `Loaded 0 admin entries` | The placeholder UID was never replaced. |
-| `kick` / `ban` say *managers unavailable* | The ban manager didn't initialise — usually a custom game mode that doesn't inherit from the base. |
-| No response at all to `!ow` or `/ow` | Router didn't start — check for `Command router ready` at startup. |
-| Config edits do nothing | Changes require a server restart. |
-| Fewer than 13 commands registered | A command failed to register; check for duplicate-name warnings in the log. |
+**Commands do nothing.** Check the log for `[Overwatch] Command router ready`. If it is
+absent, the components are not on the GameMode prefab.
 
-Every command is logged with its outcome, the caller's ID, name and UID, and the verbatim
-command string, which makes the log the fastest place to diagnose anything:
+**"You don't have permission for that."** Your UID is not in the admin config, or is at
+too low a tier. Check the `Local tier received` line in the log.
 
-```
-[Overwatch] CMD OK      | player 2 (Michael, UID bbe7...) | '!ow heal Bob'
-[Overwatch] CMD DENIED  | player 5 (Dave, UID a91c...)    | 'kill'
-```
+**Player list actions do not appear.** Check `Local tier received` shows your real tier.
+Note that actions which cannot target yourself are hidden on your own row — with one
+player connected, only Heal shows. That is expected.
+
+**Menu does not open.** Look for `Menu preset 'OW_AdminMenu' not found!` at startup —
+that means the `chimeraMenus.conf` override is not being read, or the entry name does
+not match the enum.
+
+**Vanilla admins are not Overwatch admins.** Overwatch's permission system is entirely
+separate from Reforger's. A vanilla server admin not listed in `Overwatch_Admins.json`
+is tier 0 to Overwatch and can be actioned by Overwatch admins.
 
 ---
 
-## Security notes
+## Compatibility
 
-- **All permission checks are server-side.** Clients never receive the admin list, and
-  the router's tier gate runs before any command body executes.
-- **Do not commit your `Overwatch_Admins.json` to a public repository.** UIDs aren't
-  secret, but publishing who holds which tier tells anyone probing your server exactly
-  who to target.
-- Commands are authenticated by verified identity UID, not by name — impersonating a
-  moderator's display name grants nothing.
+Pure server-side components plus two config overrides. Safe to add or remove without
+affecting saves.
+
+The `PlayerListActions.conf` override may conflict with another mod that overrides the
+same file. If both are loaded, one will win — merge the entries by hand if needed.
+
