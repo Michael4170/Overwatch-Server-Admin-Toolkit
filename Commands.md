@@ -3,9 +3,9 @@
 Type `/ow <command>` or `!ow <command>` in chat.
 
 `/ow` is consumed by the chat panel, so **other players never see it** — prefer it. `!ow`
-is sent as a normal chat message and is swallowed client-side before it leaves your
-machine, so it is also hidden, but it depends on a hook that `/ow` does not. Keep `!ow` in
-mind as a fallback for diagnosing which of the two paths is broken.
+is swallowed client-side before it leaves your machine, so it is also hidden, but it
+depends on a hook that `/ow` does not. Keep it in mind as a fallback for working out which
+of the two paths is broken.
 
 Bare `!ow` with no command shows help.
 
@@ -34,14 +34,14 @@ Bare `!ow` with no command shows help.
 
 Tier 1 = Moderator, 2 = Admin, 3 = Owner. Checks are `>=`, so an Owner can run everything.
 
-`!ow help` lists only the commands the caller's own tier can actually use, so it doubles
-as a quick check of what tier the server thinks you are.
+`!ow help` lists only what the caller's own tier can use, so it doubles as a check of what
+tier the server thinks you are.
 
 ---
 
 ## Targeting a player
 
-Anywhere `[player]` appears, the query is resolved in this order:
+Anywhere `[player]` appears, the query resolves in this order:
 
 1. **`me`** or **`self`** — you
 2. **A numeric player id** — `!ow players` lists them
@@ -57,7 +57,7 @@ word is joined back together:
 ```
 
 The exception is `kick` and `ban`, where the **first** argument is the target and the rest
-are the reason/duration — use a player id there if the name has spaces:
+is the reason or duration — use a player id there if the name has spaces:
 
 ```
 !ow players                     → 1: [AAO] Michael.M, 4: Someone Else
@@ -66,31 +66,61 @@ are the reason/duration — use a player id there if the name has spaces:
 
 ---
 
+## The admin menu
+
+`!ow menu` (aliases `gui`, `admin`) opens the in-game admin menu on your client. Tier 1.
+
+Three columns:
+
+**Left — panels.** *Admins* lists the configured roster with tiers. *Bans* lists active
+bans with remaining time. *Refresh* rebuilds the player list.
+
+**Middle — the player list.** One row per connected player, shown as `id: name`. Click a
+row to select it; the selected row is marked with `>`.
+
+**Right — detail and actions.** Selecting a player fills the pane with their id, UID, tier,
+faction and alive state, fetched from the server. The six action buttons then act on that
+selection:
+
+| Button | Command | Tier |
+|---|---|---|
+| Heal | `heal` | 1 |
+| Go To | `goto` | 2 |
+| Bring | `bring` | 2 |
+| Kill | `kill` | 2 |
+| Kick | `kick` | 2 |
+| Ban (Perm) | `ban … perm` | 2 |
+
+Safe actions are the left button column, destructive ones the right.
+
+Every button routes through the command router exactly as a typed command does, so the
+permission check, the tier-targeting rule and the audit log entry are identical. Clicking
+with nobody selected prints a prompt rather than doing anything.
+
+> **Destructive actions fire on a single click.** There is no confirmation step yet, and
+> the Ban button applies a **permanent** ban with the reason "Banned from admin menu".
+> Lift it with `!ow unban`, which takes effect immediately.
+
+The roster is built client-side from replicated names and ids, so Refresh is instant and
+costs no server call. Tiers are not available client-side — they live in a server-side
+JSON that is deliberately never sent to clients — which is why a row shows name and id
+only and the detail pane has to ask the server for the rest.
+
+Close with the Close button or Escape. There is no keybind yet.
+
+---
+
 ## Moderator (tier 1)
 
 ### `help` — `!ow help`
 Lists the commands available at your tier, with usage strings. Alias: `commands`.
 
-### `menu` — `!ow menu`
-Opens the admin menu on your client. Aliases: `gui`, `admin`.
-
-The menu covers the things that are **not** about one specific player — the admin roster,
-the ban list, connected players. Player-targeted actions live in the vanilla player list
-instead, where you right-click a player. Each panel asks the server to run the equivalent
-command and returns its text, so a panel and a typed command produce identical results,
-permission checks and log entries.
-
-Close with the Close button or Escape.
-
 ### `players` — `!ow players`
-Every connected player as `id: name`. Aliases: `who`, `list`. Use this to grab an id for
-commands where a name would be awkward.
+Every connected player as `id: name`. Aliases: `who`, `list`.
 
 ### `playerinfo` — `!ow playerinfo [player]`
-Detailed report on one player: id, name, identity UID, Overwatch tier, faction, and
-whether they currently control a living character. Aliases: `info`, `pi`.
-
-The quickest way to get someone's UID for the admin config.
+Id, name, identity UID, Overwatch tier, faction, and whether they control a living
+character. Aliases: `info`, `pi`. The quickest way to get someone's UID for the config.
 
 ### `admins` — `!ow admins`
 The configured admin roster with tiers. Names and tiers only — UIDs are deliberately not
@@ -98,13 +128,13 @@ printed to chat.
 
 ### `bans` — `!ow bans`
 Active bans with remaining time. Alias: `banlist`. **Truncates at 8 entries** — chat
-replies get unreadable past a handful. Read `Overwatch_Bans.json` for the full list.
+replies get unreadable past a handful. The menu's Bans panel and `Overwatch_Bans.json`
+have the full list.
 
 ### `heal` — `!ow heal [player|me]`
 Fully heals the target: all hitzones, bleeding included. **With no argument, heals you.**
-Reports the before/after percentage, or tells you they were already at full health.
-
-Fails if the target has no controlled character (dead or not deployed).
+Reports the before/after percentage, or says they were already at full health. Fails if
+the target has no controlled character.
 
 ### `broadcast` — `!ow broadcast [message]`
 On-screen announcement to **every** connected player. Aliases: `bc`, `announce`.
@@ -119,10 +149,10 @@ and confusion. You receive your own broadcast, so there is no separate confirmat
 ### `kill` — `!ow kill [player|me]`
 Kills the target's character.
 
-**Deliberately does not default to you.** Unlike `heal`, a destructive command should
-always name its target — use `!ow kill me` explicitly. The death is attributed to a Game
-Master instigator, so it does not trigger friendly-fire punishment or pollute the kill
-feed. Blocked against equal or higher tiers; self-kill stays allowed.
+**Deliberately does not default to you.** Unlike `heal`, a destructive command should name
+its target — use `!ow kill me` explicitly. The death is attributed to a Game Master
+instigator, so it does not trigger friendly-fire punishment or pollute the kill feed.
+Blocked against equal or higher tiers; self-kill stays allowed.
 
 ### `goto` — `!ow goto [player]`
 Teleports **you** to the target. Aliases: `tp`, `tpto`.
@@ -130,17 +160,16 @@ Teleports **you** to the target. Aliases: `tp`, `tpto`.
 ### `bring` — `!ow bring [player]`
 Teleports the target **to you**. Alias: `summon`.
 
-Both refuse when either character is in a vehicle — teleporting a seated character
-desyncs the compartment state. Get them out first. The moved character lands about 2 m to
-the side of the anchor so the two don't spawn inside each other. The reply reports the
-distance moved.
+Both refuse when either character is in a vehicle — teleporting a seated character desyncs
+the compartment. Dismount first. The moved character lands about 2 m to the side of the
+anchor so the two don't spawn inside each other. The reply reports the distance moved.
 
 ### `kick` — `!ow kick [player] [reason]`
-Disconnects a player immediately, with **no reconnect block** — a kick means "stop that
-and come back". Use `ban` for anything that should stick.
+Disconnects a player immediately, with **no reconnect block** — a kick means "stop that and
+come back". Use `ban` for anything that should stick.
 
 First argument is the target, everything after is the reason. Reason defaults to
-"No reason given" and is recorded in the log with the actor and target UID.
+"No reason given" and is recorded with the actor and target UID.
 
 ### `ban` — `!ow ban [player] [duration] [reason]`
 Bans by identity UID and kicks immediately.
@@ -153,8 +182,8 @@ Bans by identity UID and kicks immediately.
 | `7d` | days |
 | `perm` / `permanent` / `0` | never expires |
 
-**The duration is required.** A permanent ban has to be typed as `perm` rather than being
-what you get by forgetting an argument.
+**The duration is required.** A permanent ban has to be typed as `perm`, so you cannot make
+one by forgetting an argument.
 
 ```
 !ow ban 4 7d Repeated team killing
@@ -163,11 +192,11 @@ what you get by forgetting an argument.
 
 Refused if you cannot target them (equal or higher tier), or if their UID cannot be
 resolved. In Workbench the ban applies for the session but is **not saved** — the reply
-tells you so.
+says so.
 
 ### `unban` — `!ow unban [uid|name]`
-Lifts a ban. Tries an exact UID first, then falls back to a unique name match against the
-stored ban records. An ambiguous name lists the matches rather than guessing.
+Lifts a ban. Tries an exact UID first, then a unique name match against the stored ban
+records. An ambiguous name lists the matches rather than guessing.
 
 ```
 !ow unban a1b2c3d4-1111-2222-3333-444455556666
@@ -175,7 +204,7 @@ stored ban records. An ambiguous name lists the matches rather than guessing.
 ```
 
 The unbanned player can reconnect **immediately** — see the ban design note in
-CONFIGURATION.md for why that matters.
+Configuration.md for why that matters.
 
 ---
 
@@ -191,8 +220,8 @@ Sets a connected player's tier and writes it to `Overwatch_Admins.json`. Aliases
 ```
 
 The last argument is the tier; everything before it is the player, so names with spaces
-work. Their client is told the new tier straight away, so player-list actions update
-**without a reconnect**.
+work. Their client is told the new tier straight away, so menu and player-list actions
+update **without a reconnect**.
 
 Refused if: you target yourself, the tier is outside 1–3, they already hold that tier, or
 you are trying to demote an existing Owner.
@@ -208,7 +237,7 @@ an Owner by editing `Overwatch_Admins.json` directly.
 ## Why grant and revoke need the player online
 
 A tier is keyed to an identity UID, and resolving one requires the player to be connected.
-To pre-authorise someone who is offline, add them to `Overwatch_Admins.json` by hand.
+To pre-authorise someone offline, add them to `Overwatch_Admins.json` by hand.
 
 ---
 
@@ -223,4 +252,4 @@ Whether it succeeded, was refused or was not recognised:
 ```
 
 Denials are preceded by a `DENY REASON` line naming the actual cause — see the
-troubleshooting table in CONFIGURATION.md.
+troubleshooting table in Configuration.md.
