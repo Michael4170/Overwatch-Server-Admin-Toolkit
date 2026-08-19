@@ -4,23 +4,21 @@ Everything needed to get the toolkit running on a server, in the order you'll ne
 
 ---
 
-## 1. Add the components
+## 1. Installation
 
-All three are `SCR_BaseGameModeComponent` subclasses and belong on your **GameMode
-prefab**, not on a world entity.
+**There is nothing to attach.** Overwatch overrides the vanilla game mode prefab
+`Prefabs/MP/Modes/GameMode_Base.et` and adds its three components there, so any game mode
+inheriting from `GameMode_Base` — Conflict, Campaign, Game Master and the great majority
+of custom modes — picks the toolkit up automatically. Add the mod to your server's mod
+list and start it.
 
-| Component | Required | Provides |
-|---|---|---|
-| `OW_PermissionManagerComponent` | Yes | Tiers, UID resolution, `grant` / `revoke` |
-| `OW_CommandRouterComponent` | Yes | Command parsing, the permission gate, logging |
-| `OW_BanManagerComponent` | For bans | Ban list, enforcement on connect, `kick` |
+The components it attaches:
 
-Without the ban manager, `ban` / `unban` / `bans` / `kick` reply
-`Ban manager not found — add the OW_BanManagerComponent to your GameMode prefab`.
-
-> The router's `OnGameModeStart` runs **before** the permission manager's, so there is a
-> brief window at startup where commands are refused. The permission manager re-pushes
-> tiers to everyone already connected once it finishes loading, so this corrects itself.
+| Component | Provides |
+|---|---|
+| `OW_PermissionManagerComponent` | Tiers, UID resolution, `grant` / `revoke` |
+| `OW_CommandRouterComponent` | Command parsing, the permission gate, logging |
+| `OW_BanManagerComponent` | Ban list, enforcement on connect, `kick` |
 
 Confirm on startup:
 
@@ -29,7 +27,26 @@ Confirm on startup:
 [Overwatch] Loaded 2 admin entries from config.
 ```
 
-No `[Overwatch]` lines at all means the components are not on the prefab.
+> The router's `OnGameModeStart` runs **before** the permission manager's, so there is a
+> brief window at startup where commands are refused. The permission manager re-pushes
+> tiers to everyone already connected once it finishes loading, so this corrects itself.
+
+### When the override doesn't apply
+
+Two situations need attention, and both look identical from in-game — **no `[Overwatch]`
+lines at all in the server log**:
+
+**Another mod also overrides `GameMode_Base.et`.** Only one override of a given prefab
+applies, so whichever loses simply isn't there. Check your mod list for anything else
+touching the base game mode. Load order decides it.
+
+**Your game mode doesn't inherit from `GameMode_Base`.** A mode built on its own root
+prefab won't see the override. Attach the three components above to that game mode's
+prefab by hand and everything else in this guide applies unchanged.
+
+If you are running the ban commands, `OW_BanManagerComponent` must be present or
+`ban` / `unban` / `bans` / `kick` reply
+`Ban manager not found — add the OW_BanManagerComponent to your GameMode prefab`.
 
 ---
 
@@ -194,8 +211,9 @@ setting the duration alone leaves a button that says one thing and does another.
 
 ## 7. Player list actions (optional)
 
-Register the `OW_*PlayerListAction` classes in an override of `PlayerListActions.conf` to
-get Overwatch entries when right-clicking a player in the vanilla player list.
+The `OW_*PlayerListAction` classes are registered in
+`Configs/System/Actions/PlayerListActions.conf`, which ships with the mod — right-clicking
+a player in the vanilla player list gives Overwatch entries with no setup.
 
 | Action class | Tier | Notes |
 |---|---|---|
@@ -206,10 +224,11 @@ get Overwatch entries when right-clicking a player in the vanilla player list.
 | `OW_KickPlayerListAction` | 2 | `m_sReason` attribute |
 | `OW_BanPlayerListAction` | 2 | `m_sDuration` + `m_sReason` attributes |
 
-The ban action carries a **fixed** duration per entry. Register several — "Ban 1h",
-"Ban 7d" — rather than making one entry do everything. There is no confirmation prompt on
-this route and the framework provides no way to add one, so consider registering only
-short durations here and leaving permanent bans to the typed command or the menu.
+To change durations or reasons, or to add entries, override that config. The ban action
+carries a **fixed** duration per entry — register several ("Ban 1h", "Ban 7d") rather than
+making one entry do everything. There is no confirmation prompt on this route and the
+framework provides no way to add one, so consider registering only short durations here
+and leaving permanent bans to the typed command or the menu.
 
 > **Testing solo is misleading.** `CanBeShown` runs client-side and hides any action that
 > cannot target yourself. With one player connected every row in the player list is you,
@@ -218,6 +237,12 @@ short durations here and leaving permanent bans to the typed command or the menu
 ---
 
 ## 8. Troubleshooting
+
+### No `[Overwatch]` lines in the log at all
+
+The game mode override isn't applying. Either another mod is also overriding
+`GameMode_Base.et`, or your game mode doesn't inherit from it — see
+[§1 When the override doesn't apply](#when-the-override-doesnt-apply).
 
 ### "You don't have permission for that"
 
@@ -228,7 +253,7 @@ reason** on a `DENY REASON` line:
 | Log says | Meaning | Fix |
 |---|---|---|
 | `resolved to an EMPTY identity UID` | Not signed in to the backend | Sign in, reconnect |
-| `admin config is NOT LOADED` | File missing/malformed, or component missing | Check the parse error above it |
+| `admin config is NOT LOADED` | File missing or malformed | Check the parse error above it |
 | `is not in the admin list (N entries loaded)` | Config loaded, UID isn't in it | Check for a typo'd UID |
 | `is tier X but this command requires tier Y` | Working as intended | Raise their tier |
 
