@@ -187,7 +187,97 @@ In both cases the server keeps running and nobody is wrongly punished. Both log 
 
 ---
 
-## 6. Admin menu defaults
+## 6. Game Master access (optional)
+
+Overwatch can hand the vanilla editor (Game Master) to admins automatically, controlled by
+one field in `Overwatch_Admins.json`:
+
+```json
+{
+    "version": 1,
+    "gmTier": 2,
+    "admins": { ... }
+}
+```
+
+| Value | Effect |
+|---|---|
+| `0` | Off. Overwatch never touches editor access. |
+| `1` | Moderator and above |
+| `2` | **Default.** Admin and above |
+| `3` | Owner only |
+
+Anything outside `0-3` disables the feature and logs an error rather than guessing.
+
+Confirm on startup:
+
+```
+[Overwatch] Game Master auto-grant ENABLED for tier 2 (Admin) and above.
+[Overwatch] GAME MASTER | granted to <name> (UID ...) | tier 3 (Owner) meets gmTier 2
+```
+
+### Two things to weigh before leaving this on
+
+**Game Master is more power than every Overwatch command combined** — spawn anything,
+delete anything, teleport anyone, edit any entity. It collapses the tier model: an Admin who
+cannot `!ow kick` an equal-tier Admin can do considerably worse to them from the editor.
+
+**Editor actions are not in the Overwatch audit log.** Nothing done in Game Master passes
+through the command router, so the most powerful capability on your server is the only one
+with no record. Set `gmTier` to `3`, or `0`, if that trade is wrong for you.
+
+### It grants, it never revokes
+
+`!ow revoke` does **not** remove Game Master. Other systems — the scenario, the server
+config's own admin list, another mod — may have granted editor access for their own reasons,
+and silently stripping it would be a baffling bug with no visible cause. A demoted admin
+keeps GM until they reconnect. Kick them after revoking if that matters.
+
+### Timing
+
+The grant is attempted on connect, on audit success, on the post-load config sweep, and
+after a successful `!ow grant`. The per-player editor manager is not guaranteed to exist at
+any single one of those, so a missing one is treated as "not yet" rather than a failure.
+
+---
+
+## 7. The admin menu keybind
+
+Bound to **numpad minus** by default, and rebindable in the game's own keybind settings like
+any other action.
+
+It is declared in `Configs/System/chimeraInputCommon.conf`, an override of the vanilla input
+config, as a single action inside `CharacterGeneralContext`:
+
+```
+ActionManager {
+ Contexts {
+  ActionContext CharacterGeneralContext {
+   Actions {
+    Action OW_OpenAdminMenu {
+     InputSource InputSourceValue "{...}" { Input "keyboard:KC_SUBTRACT" }
+    }
+   }
+  }
+ }
+}
+```
+
+The key does not open the menu directly — it submits `!ow menu`, so it takes the same
+router, the same server-side tier check and the same audit entry as typing it.
+
+**It only works while you control a character.** `CharacterGeneralContext` is not active on
+the deploy or loading screen, so the key does nothing there; `/ow menu` still works. To
+change that, move the action to a broader context such as `IngameContext` — but test menu
+stacking first.
+
+An action declared at the config's **root** `Actions` level instead of inside a context will
+never fire. It belongs to no context, and `ActionManager` only fires actions whose context is
+currently active. This costs nothing and produces no error, so it is easy to miss.
+
+---
+
+## 8. Admin menu defaults
 
 The menu's action buttons carry fixed arguments, since a button cannot prompt for a
 duration or a reason. They are constants at the top of `OW_AdminMenu`:
@@ -209,7 +299,7 @@ setting the duration alone leaves a button that says one thing and does another.
 
 ---
 
-## 7. Player list actions (optional)
+## 9. Player list actions (optional)
 
 The `OW_*PlayerListAction` classes are registered in
 `Configs/System/Actions/PlayerListActions.conf`, which ships with the mod — right-clicking
@@ -236,7 +326,7 @@ and leaving permanent bans to the typed command or the menu.
 
 ---
 
-## 8. Troubleshooting
+## 10. Troubleshooting
 
 ### No `[Overwatch]` lines in the log at all
 
@@ -268,6 +358,12 @@ and `/ow` doesn't, the problem is the chat-command registration rather than the 
 Look for `'PlayerListRoot' not found — the player list will be empty`. The menu treats
 every widget as optional, so a missing or misnamed one is logged and skipped rather than
 being fatal. The same applies to each `Act*` button and to `TitleText` / `TierBadge`.
+
+### The keybind does nothing
+
+Look for `Admin menu keybind listener attached` on connect, then `Admin menu keybind pressed`
+when you press it. Attached but never pressed means the action is not declared, or its
+context is not active — see §7. Note it is inactive on the deploy screen by design.
 
 ### An admin entry seems ignored
 
