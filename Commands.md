@@ -70,6 +70,10 @@ is the reason or duration — use a player id there if the name has spaces:
 
 `!ow menu` (aliases `gui`, `admin`) opens the in-game admin menu on your client. Tier 1.
 
+Also bound to **numpad minus** by default, rebindable in the game's keybind settings. The
+key works while you control a character — not on the deploy or loading screen, where
+`/ow menu` still does. Pressing it submits `!ow menu` for you, so it is audited identically.
+
 Three columns:
 
 **Left — panels.** *Admins* lists the configured roster with tiers. *Bans* lists active
@@ -93,6 +97,10 @@ selection:
 
 Safe actions are the left button column, destructive ones the right.
 
+**Owners** also get a **SET TIER** block under the nav column — Moderator, Admin, Owner and
+Revoke — acting on the selected player, equivalent to `!ow grant` and `!ow revoke`. It is
+hidden from anyone below Owner (cosmetic only; the server refuses regardless).
+
 Every button routes through the command router exactly as a typed command does, so the
 permission check, the tier-targeting rule and the audit log entry are identical. Clicking
 with nobody selected prints a prompt rather than doing anything.
@@ -106,7 +114,7 @@ costs no server call. Tiers are not available client-side — they live in a ser
 JSON that is deliberately never sent to clients — which is why a row shows name and id
 only and the detail pane has to ask the server for the rest.
 
-Close with the Close button or Escape. There is no keybind yet.
+Close with the Close button or Escape.
 
 ---
 
