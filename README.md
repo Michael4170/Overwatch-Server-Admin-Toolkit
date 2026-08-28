@@ -2,13 +2,13 @@
   <img src="Overwatch_Banner.png" width="500" alt="Overwatch Banner">
 </p>
 
-## Short description  (179 / 200)
+## Short description
 
 In-game admin tools for Reforger servers. Tiered UID permissions, hidden chat commands, an admin menu with a live player list, right-click player actions, and every action logged.
 
 ---
 
-## Long description  (1995 / 2000)
+## Long description
 
 **OVERWATCH - Server Admin Toolkit**
 
