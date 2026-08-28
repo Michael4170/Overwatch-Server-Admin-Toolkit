@@ -29,6 +29,8 @@ Bare `!ow` with no command shows help.
 | `kick` | — | 2 | `!ow kick [player] [reason]` |
 | `ban` | — | 2 | `!ow ban [player] [duration] [reason]` |
 | `unban` | — | 2 | `!ow unban [uid\|name]` |
+| `gm` | `givegm`, `gamemaster` | 2 | `!ow gm [player]` |
+| `ungm` | `takegm` | 2 | `!ow ungm [player]` |
 | `grant` | `promote`, `setrank` | 3 | `!ow grant [player] [1\|2\|3]` |
 | `revoke` | `demote` | 3 | `!ow revoke [player]` |
 
@@ -97,9 +99,14 @@ selection:
 
 Safe actions are the left button column, destructive ones the right.
 
-**Owners** also get a **SET TIER** block under the nav column — Moderator, Admin, Owner and
-Revoke — acting on the selected player, equivalent to `!ow grant` and `!ow revoke`. It is
-hidden from anyone below Owner (cosmetic only; the server refuses regardless).
+**Admins and above** get **Give GM** and **Take GM** in the left column — temporary Game
+Master for the selected player, equivalent to `!ow gm` and `!ow ungm`.
+
+**Owners** also get a **SET TIER** block — Moderator, Admin, Owner and Revoke — acting on
+the selected player, equivalent to `!ow grant` and `!ow revoke`.
+
+Both blocks are hidden from anyone below their threshold. That is cosmetic only; the
+server refuses regardless, so a modified client showing the buttons gains nothing.
 
 Every button routes through the command router exactly as a typed command does, so the
 permission check, the tier-targeting rule and the audit log entry are identical. Clicking
@@ -213,6 +220,41 @@ records. An ambiguous name lists the matches rather than guessing.
 
 The unbanned player can reconnect **immediately** — see the ban design note in
 Configuration.md for why that matters.
+
+### `gm` — `!ow gm [player]`
+Gives a player **Game Master for this session**. Aliases: `givegm`, `gamemaster`.
+
+Nothing is written to `Overwatch_Admins.json`. The grant ends when they disconnect or the
+server restarts — that is the whole meaning of "one time".
+
+> **This is the largest single grant of power the toolkit makes, and the only one that
+> produces no audit trail.** Game Master can spawn anything, delete anything, teleport
+> anyone and edit any entity, and none of it passes through the command router. The grant
+> line in the server log is the last thing you will ever see about what that person did
+> with it. Hand it out accordingly.
+
+The tier-targeting rule applies exactly as it does to `kick` and `ban` — **you can only
+give Game Master to someone below your own tier**. An Admin cannot hand it to a peer or to
+an Owner, and cannot give it to themselves, which also stops an Admin sitting below
+`gmTier` from granting themselves what the config withheld.
+
+Refused if the target already has Game Master from their tier, or already holds a
+temporary grant.
+
+Works even when `gmTier` is `0`. Turning the automatic grant off is a statement about who
+gets it *by default*, not a claim that Game Master is unreachable.
+
+### `ungm` — `!ow ungm [player]`
+Takes back a temporary grant. Alias: `takegm`.
+
+**Refused on anyone whose tier grants Game Master automatically.** Removing the editor
+modes from an Admin at or above `gmTier` would be undone by their next spawn, so the
+command explains that instead of appearing to work and then silently reverting. Lower
+their tier, or raise `gmTier`.
+
+If the player already has the editor open when you revoke, the grant record is cleared
+immediately — nothing will re-apply it — but the open session may persist until they
+reconnect. The reply says so when that happens.
 
 ---
 
