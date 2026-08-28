@@ -187,27 +187,42 @@ In both cases the server keeps running and nobody is wrongly punished. Both log 
 
 ---
 
-## 6. Game Master access (optional)
+## 6. Game Master access
 
-Overwatch can hand the vanilla editor (Game Master) to admins automatically, controlled by
-one field in `Overwatch_Admins.json`:
+> **This is ON by default.** With no configuration at all, every **Admin (tier 2) and
+> Owner (tier 3) is automatically granted Game Master.** You do not add anything to turn
+> it on — you add `gmTier` to restrict or disable it.
+
+Overwatch hands the vanilla editor (Game Master) to admins automatically. The `gmTier`
+field in `Overwatch_Admins.json` controls the threshold, and **is absent from a
+freshly-generated config**, in which case the default of `2` applies:
+
+| `gmTier` | Effect |
+|---|---|
+| *(field absent)* | **Admin and above** — the default |
+| `0` | Off. Overwatch never touches editor access. |
+| `1` | Moderator and above |
+| `2` | Admin and above (same as absent) |
+| `3` | Owner only |
+
+To change it, add the field at the **top level**, alongside `version` — not inside
+`admins`:
 
 ```json
 {
     "version": 1,
-    "gmTier": 2,
+    "gmTier": 3,
     "admins": { ... }
 }
 ```
 
-| Value | Effect |
-|---|---|
-| `0` | Off. Overwatch never touches editor access. |
-| `1` | Moderator and above |
-| `2` | **Default.** Admin and above |
-| `3` | Owner only |
-
 Anything outside `0-3` disables the feature and logs an error rather than guessing.
+
+The field appears in your config on its own the first time `!ow grant` or `!ow revoke`
+rewrites the file. That changes nothing — it just makes the current setting visible.
+
+**Check the startup log rather than the file** to know what is actually in force. An
+absent field and `"gmTier": 2` produce the identical line.
 
 Confirm on startup:
 
