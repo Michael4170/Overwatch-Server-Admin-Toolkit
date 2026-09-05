@@ -31,7 +31,7 @@ Type !ow help in game for the list filtered to your tier. Both !ow and /ow work;
 
 SETUP
 
-Add three components to your game mode prefab: OW_PermissionManagerComponent, OW_CommandRouterComponent, OW_BanManagerComponent. Start the server once — Overwatch writes a template config and logs the exact path. Add your UID as tier 3 and restart.
+Add the mod to your server. Nothing to wire up — Overwatch extends the base game mode prefab, so its components attach on load. Start the server once, and it writes a template config and logs the exact path. Add your UID as tier 3, restart, done.
 
 Overwatch fails closed: a missing or malformed config grants nobody anything, and says so in the log.
 
