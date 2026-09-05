@@ -50,7 +50,7 @@ Created automatically on first start if absent. Full shape:
   "gmTier": 2,
   "admins": [
     {
-      "uid": "bge7b113-580b-4350-9709-18573139e0p7",
+      "uid": "bbh7b343-530b-4360-9709-18583169e0p7",
       "name": "Michael",
       "tier": 3
     },
@@ -182,10 +182,11 @@ restarts. `!ow bans` lists them; `!ow unban` removes one.
 
 ---
 
-## Required components
+## How Overwatch attaches itself
 
-Overwatch needs three components on your game mode prefab. Missing any one of them is
-logged at startup.
+**You do not add anything to your game mode prefab.** Overwatch ships an override of
+`Prefabs/MP/Modes/GameMode_Base.et` — the base prefab every Reforger game mode inherits
+from — carrying its three components:
 
 ```
 OW_PermissionManagerComponent
@@ -193,9 +194,16 @@ OW_CommandRouterComponent
 OW_BanManagerComponent
 ```
 
+Loading the mod is the whole installation. Any game mode built on `GameMode_Base` picks them
+up automatically.
+
+The one case where this does not apply is a game mode that does **not** inherit from
+`GameMode_Base`. That is unusual, but if Overwatch is loaded and the startup banner never
+appears, that is the first thing to check — add the three components to that game mode
+prefab by hand.
+
 Confirm the mod is live by looking for the startup banner:
 
 ```
 [Overwatch] Command router ready — 20 commands registered. v0.7.3
 ```
-
