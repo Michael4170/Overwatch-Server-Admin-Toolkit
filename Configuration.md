@@ -1,394 +1,201 @@
-# Overwatch — Configuration
+# Configuration
 
-Everything needed to get the toolkit running on a server, in the order you'll need it.
+Overwatch reads and writes two JSON files in the server profile directory. Neither is ever
+sent to a client.
 
----
-
-## 1. Installation
-
-**There is nothing to attach.** Overwatch overrides the vanilla game mode prefab
-`Prefabs/MP/Modes/GameMode_Base.et` and adds its three components there, so any game mode
-inheriting from `GameMode_Base` — Conflict, Campaign, Game Master and the great majority
-of custom modes — picks the toolkit up automatically. Add the mod to your server's mod
-list and start it.
-
-The components it attaches:
-
-| Component | Provides |
+| File | Purpose |
 |---|---|
-| `OW_PermissionManagerComponent` | Tiers, UID resolution, `grant` / `revoke` |
-| `OW_CommandRouterComponent` | Command parsing, the permission gate, logging |
-| `OW_BanManagerComponent` | Ban list, enforcement on connect, `kick` |
-
-Confirm on startup:
-
-```
-[Overwatch] Command router ready — 16 commands registered.
-[Overwatch] Loaded 2 admin entries from config.
-```
-
-> The router's `OnGameModeStart` runs **before** the permission manager's, so there is a
-> brief window at startup where commands are refused. The permission manager re-pushes
-> tiers to everyone already connected once it finishes loading, so this corrects itself.
-
-### When the override doesn't apply
-
-Two situations need attention, and both look identical from in-game — **no `[Overwatch]`
-lines at all in the server log**:
-
-**Another mod also overrides `GameMode_Base.et`.** Only one override of a given prefab
-applies, so whichever loses simply isn't there. Check your mod list for anything else
-touching the base game mode. Load order decides it.
-
-**Your game mode doesn't inherit from `GameMode_Base`.** A mode built on its own root
-prefab won't see the override. Attach the three components above to that game mode's
-prefab by hand and everything else in this guide applies unchanged.
-
-If you are running the ban commands, `OW_BanManagerComponent` must be present or
-`ban` / `unban` / `bans` / `kick` reply
-`Ban manager not found — add the OW_BanManagerComponent to your GameMode prefab`.
+| `Overwatch_Admins.json` | tiers and the `gmTier` threshold |
+| `Overwatch_Bans.json` | active bans |
 
 ---
 
-## 2. Admin config — `$profile:Overwatch_Admins.json`
+## Where `$profile:` actually resolves
 
-Written automatically on first run if absent. The template grants **nobody** anything:
+This is the single most common source of "I edited the file and nothing changed".
+
+`$profile:` is not a fixed path. It resolves to whatever profile directory the running
+process was started with, and that is **different** between Workbench and a dedicated
+server.
+
+| Where you run it | `$profile:` resolves to |
+|---|---|
+| **Workbench / Play in Editor** | your local Reforger profile, typically `%LOCALAPPDATA%\Arma Reforger\profile\` |
+| **Dedicated server** | the directory passed as `-profile` on the command line |
+
+On a typical AMP or panel-managed host that means something like:
+
+```
+/AMP/arma-reforger/1874900/AReforgerMaster/profile/Overwatch_Admins.json
+```
+
+If you are unsure, do not guess. Start the server once and read the log — Overwatch prints
+the full resolved path when it loads or creates the file:
+
+```
+[Overwatch] Loaded 4 admins from $profile:Overwatch_Admins.json
+```
+
+**Editing the wrong copy is the number one config problem.** A Workbench test and a live
+server are reading two entirely separate files.
+
+---
+
+## `Overwatch_Admins.json`
+
+Created automatically on first start if absent. Full shape:
 
 ```json
 {
-    "version": 1,
-    "admins": {
-        "PASTE_YOUR_IDENTITY_UID_HERE": { "tier": 3, "name": "REPLACE_WITH_YOUR_NAME" }
+  "gmTier": 2,
+  "admins": [
+    {
+      "uid": "bbe7b313-580b-4350-9709-18583139e0f7",
+      "name": "Michael",
+      "tier": 3
+    },
+    {
+      "uid": "7d0919b9-4c2a-4f13-9b81-2e5a71c04d3a",
+      "name": "Bravo",
+      "tier": 2
     }
+  ]
 }
 ```
 
-| Field | Meaning |
+### Fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `gmTier` | int | lowest tier that gets Game Master automatically. Default `2`. |
+| `admins[].uid` | string | Bohemia identity UID. **This is what authorises.** |
+| `admins[].name` | string | label for logs and menus only. Never used for permission. |
+| `admins[].tier` | int | 1 Moderator, 2 Admin, 3 Owner |
+
+`name` is cosmetic. Changing it does nothing but change what the log says. `uid` is the key,
+and it is what makes the system safe against name spoofing — two players can share a display
+name, but not a UID.
+
+### Finding a UID
+
+Three ways, in order of convenience:
+
+1. `!ow playerinfo <partial name>` in game — prints the UID.
+2. `!ow players` — lists everyone with their UID.
+3. The server log at connect: the `IdentityId=` field on the join line.
+
+A UID looks like `bbe7b313-580b-4350-9709-18583139e0f7`. It is stable for that Bohemia
+account forever.
+
+---
+
+## `gmTier`
+
+`gmTier` is the lowest tier that receives the vanilla Game Master editor automatically, on
+connect and on every respawn.
+
+| Value | Effect |
 |---|---|
-| key | The player's **identity UID**. The only thing used for authentication. |
-| `tier` | `1` Moderator, `2` Admin, `3` Owner |
-| `name` | A label for your readability. **Never** used for auth. |
+| `0` | automatic grant **off**. Nobody gets it from their tier. `!ow gm` still works. |
+| `1` | Moderators and above |
+| `2` | **default** — Admins and Owners |
+| `3` | Owners only |
 
-### Finding your identity UID
+The test in code is `tier >= gmTier`, with `gmTier = 0` meaning off. Set it to `3` if you
+want Admins to have the command set but not world-editing power.
 
-Join the server and look for your connect line in the log:
+`!ow admins` reports the current threshold in its output, so you can check it in game
+without touching the file:
 
 ```
-### Updating player: PlayerId=1, Name=YourName, IdentityId=bbe7b313-580b-4350-9709-18583139e0f7
+Game Master: tier 2 (Admin) and above (gmTier 2).
 ```
 
-That `IdentityId` is the key to use.
+`!ow grant` also tells you what the new tier will and will not receive, at the moment you
+grant it — so promoting someone to Admin on a server with `gmTier 3` says so explicitly
+rather than leaving you to wonder.
 
-> **Never use `00000000-0000-0000-0000-000000000000`.**
-> That is what the backend returns when nobody is signed in, so it belongs to *every*
-> unauthenticated session rather than to one player — putting it in the config would hand
-> that tier to anyone who joins signed-out. The toolkit rejects it on load and logs an
-> error. If you see it on your connect line, sign in and reconnect to get a real UID.
+### Why this exists as a separate setting
 
-### A filled-in example
+Game Master is not a command. It is the vanilla editor, and it bypasses Overwatch entirely.
+Someone with it can spawn, delete and teleport anything, and **none of it is written to the
+Overwatch log**. The grant line is the last record you get.
 
-```json
-{
-    "version": 1,
-    "admins": {
-        "bbe7b313-580b-4350-9709-18583139e0f7": { "tier": 3, "name": "Michael" },
-        "a1b2c3d4-1111-2222-3333-444455556666": { "tier": 2, "name": "Someone Else" },
-        "9f8e7d6c-5555-4444-3333-222211110000": { "tier": 1, "name": "Trial Mod" }
-    }
-}
-```
-
-Restart after editing. Once one Owner exists, add further admins in-game with
-`!ow grant` instead of editing the file — the file is rewritten automatically.
+That is why the threshold is configurable and why it is documented this prominently.
+Handing out Admin is a decision about commands. Handing out Game Master is a much larger
+decision, and `gmTier` is what keeps them separate.
 
 ---
 
-## 3. Tiers and the two hierarchy rules
+## Two traps that will cost you an evening
 
-| Tier | Name | Can do |
-|---|---|---|
-| 0 | Player | Nothing. Every command refused. |
-| 1 | Moderator | Look, heal, announce, open the menu |
-| 2 | Admin | Everything above, plus kick, ban, kill, teleport |
-| 3 | Owner | Everything, plus `grant` and `revoke` |
+### 1. `SaveConfig()` rewrites the whole file from memory
 
-Permission checks are `>=` the command's minimum tier, with two rules layered on top:
+Any command that changes admin data — `!ow grant`, `!ow revoke` — rewrites
+`Overwatch_Admins.json` **in full** from what the server currently holds in memory.
 
-**You may only act on someone at a strictly lower tier.**
-An Admin (2) cannot kick or ban another Admin — only an Owner (3) can. Ordinary players
-are tier 0, so any admin can action them. Self-targeting is blocked for destructive
-commands.
+So if you hand-edit the file while the server is running, and then anyone runs a grant or a
+revoke, your edit is silently overwritten. No error. No warning. The file just reverts.
 
-**Owners cannot revoke or demote other Owners.**
-That requires editing `Overwatch_Admins.json` by hand, which needs file access to the
-host. The asymmetry is deliberate: an Owner may freely *create* peers but not remove them,
-so a single compromised Owner account cannot strip everyone else and take the server. If
-your community would rather Owners could demote each other, remove the `TIER_OWNER` check
-in `RevokeTier`.
+**Stop the server before hand-editing.** Every time.
+
+If you must change something live, use the commands rather than the file.
+
+### 2. An Owner cannot be demoted by command
+
+`!ow revoke` refuses to act on a tier 3. This is deliberate: it means a single compromised
+Owner account cannot strip every other Owner and take the server.
+
+The consequence is that removing an Owner requires stopping the server, editing
+`Overwatch_Admins.json` by hand, and starting it again. That is the intended cost.
+
+An Owner *can* create another Owner. Creating is reversible by hand; being locked out of
+your own server is not.
 
 ---
 
-## 4. Ban list — `$profile:Overwatch_Bans.json`
+## Failure behaviour
 
-Created on first ban. Keyed by identity UID, enforced on connect via
-`OnPlayerAuditSuccess` with `OnPlayerConnected` as a backup. Expired records are pruned
-automatically when the file loads.
+Overwatch **fails closed**. Every failure path grants nobody anything.
 
-```json
-{
-    "version": 1,
-    "bans": {
-        "a1b2c3d4-1111-2222-3333-444455556666": {
-            "name": "Someone Else",
-            "reason": "Team killing",
-            "bannedBy": "Michael",
-            "bannedByUid": "bbe7b313-580b-4350-9709-18583139e0f7",
-            "bannedAt": 1755000000,
-            "expiresAt": 1755086400
-        }
-    }
-}
-```
-
-`expiresAt` of `0` means permanent. Times are Unix seconds.
-
-**Banned players are kicked with no engine-level reconnect timeout, on purpose.** Passing
-the ban duration to the engine would also arm *its* reconnect block, which no script can
-clear — `!ow unban` would then appear to do nothing until the original sentence expired.
-The Overwatch list is the single revocable source of truth, and enforcement re-runs on
-every connection attempt, so a still-banned player is kicked again regardless.
-
-The trade-off: a banned player briefly connects before being kicked, rather than being
-refused at the network layer.
-
-### Keys the ban file will never accept
-
-| Key | Why it is rejected |
+| Situation | What happens |
 |---|---|
-| `00000000-0000-...` | Shared by every signed-out session — would kick all of them |
-| `LOCAL_<playerId>` | Workbench dev key; player ids are recycled between sessions |
+| File missing | template written, log line tells you the path, nobody has permission |
+| File malformed | load aborts, error logged, nobody has permission |
+| UID not in the list | denied, logged as `UID not in the list` |
+| Tier too low | denied, logged as `tier too low` |
+| Player not signed in | denied, logged as `not signed in` |
 
-Both are dropped on load with a log line, and `SaveBans` will not write either. A `LOCAL_`
-ban still works **in memory** so the ban flow stays testable in Workbench — it just does
-not survive the session, and the command reply says so.
-
----
-
-## 5. Failure behaviour
-
-The two config files fail in **opposite** directions, deliberately:
-
-| File | On corruption | Result |
-|---|---|---|
-| `Overwatch_Admins.json` | Fails **closed** | Nobody has admin |
-| `Overwatch_Bans.json` | Fails **open** | Nobody is banned |
-
-In both cases the server keeps running and nobody is wrongly punished. Both log loudly.
+Those four denial reasons are logged as distinct strings on purpose. They are four
+completely different problems that otherwise look identical from in game — "the command did
+nothing".
 
 ---
 
-## 6. Game Master access
+## `Overwatch_Bans.json`
 
-> **This is ON by default.** With no configuration at all, every **Admin (tier 2) and
-> Owner (tier 3) is automatically granted Game Master.** You do not add anything to turn
-> it on — you add `gmTier` to restrict or disable it.
+Written and maintained by `OW_BanManagerComponent`. You should not need to edit it by hand,
+but it is plain JSON if you do — and the same "stop the server first" rule applies.
 
-Overwatch hands the vanilla editor (Game Master) to admins automatically. The `gmTier`
-field in `Overwatch_Admins.json` controls the threshold, and **is absent from a
-freshly-generated config**, in which case the default of `2` applies:
+Bans are keyed by UID, store the reason, the banning admin and the expiry, and survive
+restarts. `!ow bans` lists them; `!ow unban` removes one.
 
-| `gmTier` | Effect |
-|---|---|
-| *(field absent)* | **Admin and above** — the default |
-| `0` | Off. Overwatch never touches editor access. |
-| `1` | Moderator and above |
-| `2` | Admin and above (same as absent) |
-| `3` | Owner only |
+---
 
-To change it, add the field at the **top level**, alongside `version` — not inside
-`admins`:
+## Required components
 
-```json
-{
-    "version": 1,
-    "gmTier": 3,
-    "admins": { ... }
-}
-```
-
-Anything outside `0-3` disables the feature and logs an error rather than guessing.
-
-The field appears in your config on its own the first time `!ow grant` or `!ow revoke`
-rewrites the file. That changes nothing — it just makes the current setting visible.
-
-**Check the startup log rather than the file** to know what is actually in force. An
-absent field and `"gmTier": 2` produce the identical line.
-
-Confirm on startup:
+Overwatch needs three components on your game mode prefab. Missing any one of them is
+logged at startup.
 
 ```
-[Overwatch] Game Master auto-grant ENABLED for tier 2 (Admin) and above.
-[Overwatch] GAME MASTER | granted to <name> (UID ...) | tier 3 (Owner) meets gmTier 2
+OW_PermissionManagerComponent
+OW_CommandRouterComponent
+OW_BanManagerComponent
 ```
 
-### Two things to weigh before leaving this on
-
-**Game Master is more power than every Overwatch command combined** — spawn anything,
-delete anything, teleport anyone, edit any entity. It collapses the tier model: an Admin who
-cannot `!ow kick` an equal-tier Admin can do considerably worse to them from the editor.
-
-**Editor actions are not in the Overwatch audit log.** Nothing done in Game Master passes
-through the command router, so the most powerful capability on your server is the only one
-with no record. Set `gmTier` to `3`, or `0`, if that trade is wrong for you.
-
-### It grants, it never revokes
-
-`!ow revoke` does **not** remove Game Master. Other systems — the scenario, the server
-config's own admin list, another mod — may have granted editor access for their own reasons,
-and silently stripping it would be a baffling bug with no visible cause. A demoted admin
-keeps GM until they reconnect. Kick them after revoking if that matters.
-
-### Timing
-
-The grant is attempted on connect, on audit success, on the post-load config sweep, and
-after a successful `!ow grant`. The per-player editor manager is not guaranteed to exist at
-any single one of those, so a missing one is treated as "not yet" rather than a failure.
-
----
-
-## 7. The admin menu keybind
-
-Bound to **numpad minus** by default, and rebindable in the game's own keybind settings like
-any other action.
-
-It is declared in `Configs/System/chimeraInputCommon.conf`, an override of the vanilla input
-config, as a single action inside `CharacterGeneralContext`:
+Confirm the mod is live by looking for the startup banner:
 
 ```
-ActionManager {
- Contexts {
-  ActionContext CharacterGeneralContext {
-   Actions {
-    Action OW_OpenAdminMenu {
-     InputSource InputSourceValue "{...}" { Input "keyboard:KC_SUBTRACT" }
-    }
-   }
-  }
- }
-}
+[Overwatch] Command router ready — 20 commands registered. v0.7.3
 ```
 
-The key does not open the menu directly — it submits `!ow menu`, so it takes the same
-router, the same server-side tier check and the same audit entry as typing it.
-
-**It only works while you control a character.** `CharacterGeneralContext` is not active on
-the deploy or loading screen, so the key does nothing there; `/ow menu` still works. To
-change that, move the action to a broader context such as `IngameContext` — but test menu
-stacking first.
-
-An action declared at the config's **root** `Actions` level instead of inside a context will
-never fire. It belongs to no context, and `ActionManager` only fires actions whose context is
-currently active. This costs nothing and produces no error, so it is easy to miss.
-
----
-
-## 8. Admin menu defaults
-
-The menu's action buttons carry fixed arguments, since a button cannot prompt for a
-duration or a reason. They are constants at the top of `OW_AdminMenu`:
-
-| Constant | Default | Effect |
-|---|---|---|
-| `BAN_BUTTON_DURATION` | `perm` | Duration applied by the Ban button |
-| `BAN_BUTTON_LABEL` | `Ban (Perm)` | The button's caption |
-| `BAN_BUTTON_REASON` | `Banned from admin menu` | Reason stored in the record |
-| `KICK_BUTTON_REASON` | `Kicked from admin menu` | Reason logged for a menu kick |
-
-> **There is currently no confirmation step**, so the Ban button writes a permanent record
-> on a single click. If that is not what your admins should have one click away, set
-> `BAN_BUTTON_DURATION` to something like `1h` and leave long bans to the typed command,
-> where the admin has to spell out both duration and reason.
-
-Changing the label and the duration together matters — the caption is its own constant, so
-setting the duration alone leaves a button that says one thing and does another.
-
----
-
-## 9. Player list actions (optional)
-
-The `OW_*PlayerListAction` classes are registered in
-`Configs/System/Actions/PlayerListActions.conf`, which ships with the mod — right-clicking
-a player in the vanilla player list gives Overwatch entries with no setup.
-
-| Action class | Tier | Notes |
-|---|---|---|
-| `OW_HealPlayerListAction` | 1 | Can target yourself |
-| `OW_KillPlayerListAction` | 2 | |
-| `OW_GotoPlayerListAction` | 2 | Teleport yourself to them |
-| `OW_BringPlayerListAction` | 2 | Teleport them to you |
-| `OW_KickPlayerListAction` | 2 | `m_sReason` attribute |
-| `OW_BanPlayerListAction` | 2 | `m_sDuration` + `m_sReason` attributes |
-
-To change durations or reasons, or to add entries, override that config. The ban action
-carries a **fixed** duration per entry — register several ("Ban 1h", "Ban 7d") rather than
-making one entry do everything. There is no confirmation prompt on this route and the
-framework provides no way to add one, so consider registering only short durations here
-and leaving permanent bans to the typed command or the menu.
-
-> **Testing solo is misleading.** `CanBeShown` runs client-side and hides any action that
-> cannot target yourself. With one player connected every row in the player list is you,
-> so the menu correctly shows Heal alone. Verify these with a second player.
-
----
-
-## 10. Troubleshooting
-
-### No `[Overwatch]` lines in the log at all
-
-The game mode override isn't applying. Either another mod is also overriding
-`GameMode_Base.et`, or your game mode doesn't inherit from it — see
-[§1 When the override doesn't apply](#when-the-override-doesnt-apply).
-
-### "You don't have permission for that"
-
-The caller always sees the same vague refusal, because the specific reason would tell an
-ordinary player about the shape of your admin roster. **The server log has the real
-reason** on a `DENY REASON` line:
-
-| Log says | Meaning | Fix |
-|---|---|---|
-| `resolved to an EMPTY identity UID` | Not signed in to the backend | Sign in, reconnect |
-| `admin config is NOT LOADED` | File missing or malformed | Check the parse error above it |
-| `is not in the admin list (N entries loaded)` | Config loaded, UID isn't in it | Check for a typo'd UID |
-| `is tier X but this command requires tier Y` | Working as intended | Raise their tier |
-
-### `/ow` isn't recognised
-
-Look for `Chat command registered: '/ow ...'` in the log — it should appear around the
-time you connect, without anyone typing first. `!ow` works regardless, so if `!ow` works
-and `/ow` doesn't, the problem is the chat-command registration rather than the toolkit.
-
-### The menu opens but the player list is empty
-
-Look for `'PlayerListRoot' not found — the player list will be empty`. The menu treats
-every widget as optional, so a missing or misnamed one is logged and skipped rather than
-being fatal. The same applies to each `Act*` button and to `TitleText` / `TierBadge`.
-
-### The keybind does nothing
-
-Look for `Admin menu keybind listener attached` on connect, then `Admin menu keybind pressed`
-when you press it. Attached but never pressed means the action is not declared, or its
-context is not active — see §7. Note it is inactive on the deploy screen by design.
-
-### An admin entry seems ignored
-
-`$profile:` resolves to **different directories** for a Workbench session and a standalone
-or dedicated server. A config that works in one can be entirely absent in the other, which
-reads as "no permission for any command". The path is printed in the startup log line.
-
-### `LOCAL_1` in the admin config
-
-Allowed, and intended for Workbench testing — it grants to whoever holds that player id,
-which is always you in a solo session. It logs a warning on load. **Remove it before
-shipping a config to a real server.** The `LOCAL_` fallback is compiled out of non-dev
-builds entirely (`#ifdef WORKBENCH`).
