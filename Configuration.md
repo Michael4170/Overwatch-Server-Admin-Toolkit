@@ -50,7 +50,7 @@ Created automatically on first start if absent. Full shape:
   "gmTier": 2,
   "admins": [
     {
-      "uid": "bbe7b313-580b-4350-9709-18583139e0f7",
+      "uid": "bge7b113-580b-4350-9709-18573139e0p7",
       "name": "Michael",
       "tier": 3
     },
