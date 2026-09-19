@@ -4,6 +4,8 @@
 
 **OVERWATCH - Server Admin Toolkit**
 
+Tiered admin tooling for Arma Reforger dedicated servers. Permissions are keyed to Bohemia identity UIDs and checked entirely server-side, so a client cannot exceed the tier they hold.
+
 FEATURES
 
 - Three tiers — Moderator, Admin, Owner — 20 chat commands, filtered to what you can use.
