@@ -7,7 +7,7 @@ client.
 |---|---|---|
 | `Overwatch_Admins.json` | tiers and the `gmTier` threshold | **yes** — rewritten on every grant/revoke |
 | `Overwatch_Bans.json` | active bans | **yes** |
-| `Overwatch_Config.json` | optional features: restart countdown, MOTD | **no** — created once, then read only |
+| `Overwatch_Config.json` | optional features: restart countdown, MOTD, Discord | **no** — created once, then read only |
 
 That last column is the important one and is explained under
 [Two traps that will cost you an evening](#two-traps-that-will-cost-you-an-evening).
@@ -168,6 +168,24 @@ unlike `Overwatch_Admins.json`. See the traps section below for why that distinc
     "footer": "",
     "showOn": "welcome",
     "showDelaySeconds": 2
+  },
+
+  "discord": {
+    "enabled": false,
+    "alertWebhook": "",
+    "activityWebhook": "",
+    "serverName": "",
+    "announceStartup": true,
+    "alertCooldownSeconds": 300,
+    "alertGlobalCooldownSeconds": 60,
+    "alertMinConnectedSeconds": 60,
+    "alertMaxLength": 300,
+    "notifyOnlineStaff": true,
+    "logJoins": true,
+    "logLeaves": true,
+    "logAdminActions": true,
+    "showUids": false,
+    "batchSeconds": 10
   }
 }
 ```
@@ -272,6 +290,111 @@ Leave `bannerImage` empty for a text-only panel; the banner area simply disappea
 An enabled MOTD with no `title` and no `rules` disables itself and says so, rather than
 showing every player an empty box.
 
+### Discord
+
+Posts to Discord through webhooks. Two feeds, two channels, deliberately: an alert that staff
+are meant to react to cannot share a channel with a stream of joins and leaves, or it gets
+buried and staff stop reading it.
+
+| Feed | Carries | Posted |
+|---|---|---|
+| **activity** | joins, leaves, admin actions, the startup line | batched every `batchSeconds` |
+| **alert** | player alerts | immediately |
+
+You can configure either or both. **The player alert command is not built yet**, so nothing
+raises an alert today; `alertWebhook` is used by `!ow discordtest` for now.
+
+| Field | Meaning |
+|---|---|
+| `enabled` | master switch. Ships `false`. |
+| `alertWebhook` | full webhook URL for the alert channel. |
+| `activityWebhook` | full webhook URL for the activity channel. |
+| `serverName` | shown on every post, so one channel can serve several servers. |
+| `announceStartup` | post a line when the server starts. Default `true`. |
+| `logJoins` | post a line when a player joins. Default `true`. |
+| `logLeaves` | post a line when a player leaves, with how long they played. Default `true`. |
+| `logAdminActions` | post each admin command that succeeded. Default `true`. |
+| `showUids` | include the player's UID on join and leave lines. Default `false`. |
+| `batchSeconds` | how often the activity queue is posted. Default `10`, clamped to 2–300. |
+| `alertCooldownSeconds` | per-player wait between alerts. Default `300`. |
+| `alertGlobalCooldownSeconds` | server-wide wait between alerts. Default `60`. |
+| `alertMinConnectedSeconds` | how long a player must be connected before alerting. Default `60`. |
+| `alertMaxLength` | longest alert message accepted, clamped to 20–1500. Default `300`. |
+| `notifyOnlineStaff` | also show the alert in game to connected staff. Default `true`. |
+
+The last five fields belong to the alert command. They are read and checked now but have no
+effect until it arrives.
+
+The activity switches default to `true`, which does not break the "every feature ships off"
+rule: `enabled` ships `false`, so nothing posts anywhere until you turn Discord on. Once you
+have, a silent feed would be the surprising default.
+
+#### Setting it up
+
+1. In Discord: channel settings → **Integrations** → **Webhooks** → **New Webhook** → **Copy
+   Webhook URL**. Make one per channel.
+2. Paste each URL into `Overwatch_Config.json`, set `enabled` to `true`, and restart.
+3. In game, as an Owner, run `!ow discordtest activity` (or `alert`), then check the channel.
+
+`!ow discordtest [alert|activity|both]` posts one test message and defaults to `alert`. The
+post is asynchronous, so the command can only say it was sent. If nothing arrives, the server
+log has a `DISCORD` line saying why; the table under
+[Failure behaviour](#failure-behaviour) lists them.
+
+If you configure only the alert webhook, the startup line goes there instead, so you still
+get something confirming the integration works.
+
+#### Two things Overwatch cannot do for you
+
+**Making the channel staff-only is a Discord permission, not an Overwatch setting.** A
+webhook posts just as happily into a channel the whole server can read, and Overwatch cannot
+see or check who can read it. Set the channel permissions in Discord yourself. There is no
+role ping: a staff-only channel is the whole notification mechanism.
+
+**The webhook URL is a secret.** Anyone holding it can post into that channel as often as they
+like. It lives only in `Overwatch_Config.json` on the server and is never sent to a client.
+Overwatch never writes it to the log; only the Discord-side webhook ID is logged, which is
+not secret. Do not paste your config file into a support thread or a public repository. If a
+URL leaks, delete the webhook in Discord and make a new one.
+
+Every post switches off Discord mention parsing, so text containing `@everyone` cannot ping
+anyone.
+
+#### What the activity feed posts
+
+```
+`+` **Michael** joined — 7 players online
+`-` **Michael** left — played 12m
+`>` **Michael** ran `!ow heal Bravo`
+```
+
+Those are the lines as sent; Discord renders the names in bold and the markers and command in
+code style.
+
+- **Joins are announced about three seconds late.** A player's name and UID are not reliably
+  available the instant they connect, and an empty name in a log is worse than a late one. It
+  also means a player who connects and drops inside three seconds produces neither a join nor
+  a leave line, so someone retrying on a bad connection cannot fill the channel.
+- **Admin actions appear only when they succeed.** A refused or failed command posts nothing.
+  Commands that only read (`help`, `admins`, `players`, `playerinfo`, `bans`, `menu`) and
+  `discordtest` never post. When Overwatch kicks or bans someone, the admin action naming who
+  did it is in the same feed, which is why the leave line just says `left`.
+- **UIDs are hidden by default**, because the activity channel is often visible to more people
+  than the alert channel and a UID is an account identifier. Turn `showUids` on if your staff
+  need to copy UIDs out of Discord.
+- **Batching is not optional.** Discord allows a webhook roughly five requests every two
+  seconds. A 40-player server changing map would blow straight through that, and a rate-limited
+  post is lost, not queued. One message carrying several lines stays well under the limit. If
+  the queue ever backs up, the oldest lines are dropped and the gap is reported in the feed.
+
+#### Upgrading an existing config
+
+`Overwatch_Config.json` is only created when absent, so a file written before Discord existed
+has no `discord` block. That is fine: it loads normally, Discord is simply off, and the log
+says so. To enable it, paste the `discord` block from the example above into your file as a
+sibling of `restart` and `motd`, mind the comma after the block before it, and restart. A JSON
+typo anywhere in the file turns **all** optional features off, not just Discord.
+
 ---
 
 ## Two traps that will cost you an evening
@@ -322,6 +445,14 @@ feature stays off.
 | `Overwatch_Config.json` malformed | **not overwritten**, error logged, all optional features off |
 | Restart time unparseable | countdown disabled, the offending value named in the log |
 | MOTD enabled but empty | MOTD disabled rather than showing an empty panel |
+| `discord` block missing | Discord off, logged. Everything else loads normally |
+| Discord enabled, no usable webhook | Discord disabled, logged |
+| Webhook set but not a Discord URL | that feed disabled, the field named in the log |
+| Discord returns 401 or 403 | that feed switched off until restart — the URL's token is wrong or was regenerated |
+| Discord returns 404 | that feed switched off until restart — the webhook was deleted or the URL is mistyped |
+| Discord returns 429 | that post dropped; raise `batchSeconds` if it keeps happening |
+| Discord returns 5xx | that post dropped, logged as Discord's problem |
+| No HTTP response at all | logged as `got no HTTP response` — your host is probably blocking outbound HTTPS |
 
 Those denial reasons are logged as distinct strings on purpose. They are completely different
 problems that otherwise look identical from in game — "the command did nothing".
