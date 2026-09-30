@@ -19,12 +19,16 @@ FEATURES
 COMMANDS
 Moderator: help, admins, heal, players, playerinfo, broadcast, bans, menu Admin: kill, goto, bring, spectate, unspectate, kick, ban, unban, gm, ungm Owner: grant, revoke, discordtest
 Type !ow help in game for your tier's list. !ow and /ow both work; !ow is hidden from other players.
+
 SETUP
 Nothing to wire up — Overwatch extends the base game mode prefab. First start writes template configs and logs their paths. Add your UID as tier 3, restart, done.
 Overwatch fails closed: a bad config grants nobody anything and says so. Countdown, MOTD and Discord ship off.
 Discord needs a webhook URL in the config; keep that channel staff-only.
+
 TWO THINGS TO KNOW
 Game Master is more power than every command here combined, and nothing done with it reaches Overwatch's log. gmTier sets who gets it — default 2 (Admin), 3 for Owners only, 0 to disable.
 Spectate does not notify the target — covert by design, since an admin checking for cheating can't announce it. The log is the only record; set a disclosure policy first.
+
 Full docs and troubleshooting: https://github.com/Michael4170/Overwatch-Server-Admin-Toolkit
+
 Suggestions and bug reports: https://discord.gg/SsM7r8b7ae or the GitHub page.
