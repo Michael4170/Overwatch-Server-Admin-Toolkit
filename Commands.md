@@ -124,6 +124,7 @@ Everything above, plus:
 |---|---|---|
 | `!ow grant <player> <tier>` | `promote`, `setrank` | sets someone's tier (1–3) |
 | `!ow revoke <player>` | `demote` | removes staff status entirely |
+| `!ow discordtest [alert\|activity\|both]` | `dtest` | sends a test post to a Discord webhook |
 
 `!ow grant` writes to `Overwatch_Admins.json` immediately and reports whether the new tier
 also receives Game Master automatically, given the current `gmTier`:
@@ -143,6 +144,25 @@ from outside.
 
 `!ow revoke` **cannot demote an Owner.** See [Configuration.md](Configuration.md) for why,
 and for what to do instead.
+
+### `!ow discordtest`
+
+```
+!ow discordtest activity
+```
+
+Posts one test message to a Discord webhook, so you can prove a URL works without restarting
+the server. It takes one feed per run — `alert` or `activity` — and defaults to `alert`.
+`both` posts to both channels, but you have to ask for it.
+
+The post is asynchronous, so the command can only tell you it was sent. Check the channel,
+and the server log for a `DISCORD` line if nothing arrives. It refuses with a reason if
+Discord is off or the feed you asked for has no webhook. Setup is in
+[Configuration.md](Configuration.md#discord).
+
+When Discord is on, successful admin commands are also mirrored into the activity feed.
+Commands that only read — `help`, `admins`, `players`, `playerinfo`, `bans`, `menu` — and
+`discordtest` itself are never posted, and neither are refused or failed commands.
 
 ---
 
@@ -168,11 +188,11 @@ and the Ban button is **permanent**. A stray click writes a real permanent ban r
 
 ## Command count
 
-20 commands, registered at startup:
+21 commands, registered at startup:
 
 ```
-[Overwatch] Command router ready — 20 commands registered. v0.7.3
+[Overwatch] Command router ready — 21 commands registered. v0.2.15
 ```
 
-8 Moderator, 10 Admin, 2 Owner. If that number is not 20 in your log, you are running a
+8 Moderator, 10 Admin, 3 Owner. If that number is not 21 in your log, you are running a
 different build than this document describes.
