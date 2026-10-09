@@ -28,7 +28,7 @@ way.
 | Command | Aliases | What it does |
 |---|---|---|
 | `!ow help` | `commands` | lists the commands you personally can use |
-| `!ow admins` | — | lists staff and their tiers, plus the current `gmTier` |
+| `!ow admins` | — | lists staff and their tiers, and notes that Game Master is automatic for every tier |
 | `!ow heal <player>` | — | restores health |
 | `!ow players` | `who`, `list` | every connected player with id and UID |
 | `!ow playerinfo <player>` | `info`, `pi` | one player in detail — UID, tier, position, health |
@@ -81,8 +81,10 @@ attempt. Write one.
 
 ### `!ow gm` and `!ow ungm`
 
-A session-only Game Master grant. It is **never written to disk** and is cleared when the
-player disconnects — including a rejoin during the same server session.
+A session-only Game Master grant for a player who has **no tier**. Every tier (Moderator,
+Admin, Owner) already gets Game Master automatically, so both commands refuse a staff member
+as the target. The grant is **never written to disk** and is cleared when the player
+disconnects — including a rejoin during the same server session.
 
 `!ow ungm` restores the editor access the player had *before* the grant, rather than forcing
 it off. That distinction matters: a normal player with Arma Vision keeps Arma Vision after
@@ -105,9 +107,10 @@ ends it and returns you to your character.
 Two constraints:
 
 - **It requires Game Master.** The entity streaming that lets you see a player across the
-  map is a property of having the editor open. If your tier is below `gmTier` you are
-  refused, with that as the stated reason. Spectate does not grant itself the editor — that
-  would be a back door to full Game Master behind a button labelled "Spectate".
+  map is a property of having the editor open. Every tier has Game Master automatically, so
+  this only refuses you if you have lost your editor access, and the message says so. Spectate
+  does not grant itself the editor — that would be a back door to full Game Master behind a
+  button labelled "Spectate".
 - **The target is not notified.** This is deliberate and the server log is the only record.
   See the covert-spectate section in [README.md](README.md); it is a community policy
   question you should answer before enabling this.
@@ -126,21 +129,17 @@ Everything above, plus:
 | `!ow revoke <player>` | `demote` | removes staff status entirely |
 | `!ow discordtest [alert\|activity\|both]` | `dtest` | sends a test post to a Discord webhook |
 
-`!ow grant` writes to `Overwatch_Admins.json` immediately and reports whether the new tier
-also receives Game Master automatically, given the current `gmTier`:
+`!ow grant` writes to `Overwatch_Admins.json` immediately and tells you the new tier comes
+with Game Master, because it is the largest single capability the toolkit hands out:
 
 ```
-Bravo is now Admin (tier 2). They also get Game Master automatically (gmTier 2).
+Bravo is now Admin (tier 2). They also get Game Master automatically (every tier does).
 ```
 
-or, on a server configured for Owners only:
-
-```
-Bravo is now Admin (tier 2). NOTE: gmTier is 3 (Owner), so tier 2 does NOT get Game Master automatically.
-```
-
-That second line exists because a silent correct refusal and a silent bug look identical
-from outside.
+Tier 2 (Admin) and above are also given the engine administrator role, so other mods that
+check for an admin recognise them. The `adminTier` setting in `Overwatch_Admins.json` controls
+that threshold (default 2; see [Configuration.md](Configuration.md)). Moderators get Game
+Master only.
 
 `!ow revoke` **cannot demote an Owner.** See [Configuration.md](Configuration.md) for why,
 and for what to do instead.
@@ -191,7 +190,7 @@ and the Ban button is **permanent**. A stray click writes a real permanent ban r
 21 commands, registered at startup:
 
 ```
-[Overwatch] Command router ready — 21 commands registered. v0.2.15
+[Overwatch] Command router ready — 21 commands registered.
 ```
 
 8 Moderator, 10 Admin, 3 Owner. If that number is not 21 in your log, you are running a
