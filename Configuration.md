@@ -5,7 +5,7 @@ client.
 
 | File | Purpose | Written by Overwatch? |
 |---|---|---|
-| `Overwatch_Admins.json` | tiers and the `gmTier` threshold | **yes** — rewritten on every grant/revoke |
+| `Overwatch_Admins.json` | tiers and the `adminTier` threshold | **yes** — rewritten on every grant/revoke |
 | `Overwatch_Bans.json` | active bans | **yes** |
 | `Overwatch_Config.json` | optional features: restart countdown, MOTD | **no** — created once, then read only |
 
@@ -53,7 +53,7 @@ Created automatically on first start if absent. Full shape:
 ```json
 {
   "version": 1,
-  "gmTier": 2,
+  "adminTier": 2,
   "admins": {
     "bbe7b313-580b-4350-9709-18583139e0f7": {
       "tier": 3,
@@ -79,7 +79,7 @@ then add entries in the shape it produced.
 | Field | Type | Meaning |
 |---|---|---|
 | `version` | int | config format version. Leave it alone. |
-| `gmTier` | int | lowest tier that gets Game Master automatically. Default `2`. |
+| `adminTier` | int | lowest tier given the engine administrator role, so other mods see them as admins. `0`–`3`, default `2`. See [below](#game-master-and-admintier). |
 | *(key)* | string | Bohemia identity UID. **This is what authorises.** |
 | `tier` | int | 1 Moderator, 2 Admin, 3 Owner |
 | `name` | string | label for logs and menus only. Never used for permission. |
@@ -101,41 +101,58 @@ account forever.
 
 ---
 
-## `gmTier`
+## Game Master and `adminTier`
 
-`gmTier` is the lowest tier that receives the vanilla Game Master editor automatically, on
-connect and on every respawn.
+Two separate things are handed out by tier, and only one of them is configurable.
+
+**Game Master — every tier, always.** Moderators, Admins and Owners all receive the vanilla
+Game Master editor automatically, on connect and on every respawn. There is no setting for it.
+`!ow gm` and `!ow ungm` exist for players who have **no tier**: a session-only grant that is
+never written to disk. They refuse a staff member, who already has it.
+
+**`adminTier` — the engine administrator role.** Other mods decide who is an admin by asking the
+engine, not Overwatch, so an Overwatch tier means nothing to them on its own. `adminTier` is the
+lowest tier that Overwatch also gives the engine's administrator role (`SESSION_ADMINISTRATOR`),
+which those checks accept.
 
 | Value | Effect |
 |---|---|
-| `0` | automatic grant **off**. Nobody gets it from their tier. `!ow gm` still works. |
-| `1` | Moderators and above |
-| `2` | **default** — Admins and Owners |
+| `0` | Overwatch gives nobody the administrator role. Everyone still gets Game Master by tier. |
+| `1` | Moderators and above get the role as well as Game Master |
+| `2` | **default** — Admins and Owners get both. Moderators get Game Master only. |
 | `3` | Owners only |
 
-The test in code is `tier >= gmTier`, with `gmTier = 0` meaning off. Set it to `3` if you
-want Admins to have the command set but not world-editing power.
+A value outside `0`–`3` is logged as an error and `2` is used instead.
 
-`!ow admins` reports the current threshold in its output, so you can check it in game
-without touching the file:
+Overwatch only removes a role it gave. If someone already had the administrator role some other
+way, for instance the engine's own `#login`, a revoke leaves it alone.
+
+The startup log states what is in force:
 
 ```
-Game Master: tier 2 (Admin) and above (gmTier 2).
+[Overwatch] The engine SESSION_ADMINISTRATOR role is given to tier 2 (Admin) and above (adminTier),
+so other mods see them as admins. Lower tiers get Game Master only.
 ```
 
-`!ow grant` also tells you what the new tier will and will not receive, at the moment you
-grant it — so promoting someone to Admin on a server with `gmTier 3` says so explicitly
-rather than leaving you to wonder.
+Changing it means editing `Overwatch_Admins.json` with the server stopped (see
+[trap 1](#1-saveconfig-rewrites-the-whole-admin-file-from-memory)) and restarting.
 
-### Why this exists as a separate setting
+An older file may still contain a `gmTier` line. It is ignored, and dropped the next time
+Overwatch saves the file (any grant or revoke). It does **not** carry over: it set who got Game
+Master, which is now everyone with a tier, whereas `adminTier` sets who gets the administrator
+role.
+
+`!ow admins` reminds you that Game Master is automatic for every tier. `!ow grant` says so too,
+at the moment you grant it.
+
+### Why Game Master is called out so prominently
 
 Game Master is not a command. It is the vanilla editor, and it bypasses Overwatch entirely.
 Someone with it can spawn, delete and teleport anything, and **none of it is written to the
 Overwatch log**. The grant line is the last record you get.
 
-That is why the threshold is configurable and why it is documented this prominently.
-Handing out Admin is a decision about commands. Handing out Game Master is a much larger
-decision, and `gmTier` is what keeps them separate.
+Because every tier now has it, the decision to give someone a tier is also the decision to give
+them Game Master. Do not hand out Moderator to someone you would not trust with the editor.
 
 ---
 
@@ -462,6 +479,7 @@ feature stays off.
 |---|---|
 | Admin file missing | template written, log line tells you the path, nobody has permission |
 | Admin file malformed | load aborts, error logged, nobody has permission |
+| `adminTier` outside 0–3 | error logged, default `2` used |
 | UID not in the list | denied, logged as `UID not in the list` |
 | Tier too low | denied, logged as `tier too low` |
 | Player not signed in | denied, logged as `not signed in` |
@@ -521,5 +539,5 @@ hand.
 Confirm the mod is live by looking for the startup banner:
 
 ```
-[Overwatch] Command router ready — 20 commands registered. v0.2.13
+[Overwatch] Command router ready — 21 commands registered.
 ```
