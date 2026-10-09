@@ -10,7 +10,7 @@ FEATURES
 * Three tiers — Moderator, Admin, Owner — 21 chat commands, filtered to what you can use.
 * In-game admin menu on a keybind — live player list, click-to-action. Same permission checks as chat.
 * Spectate — follow any player through their camera.
-* Game Master — automatic for qualifying tiers, plus session-only grants with !ow gm.
+* Game Master — automatic for every tier; !ow gm grants it for one session.
 * Persistent bans — timed or permanent, survive restarts, revocable in game.
 * Restart countdown — an on-screen timer before scheduled restarts. It warns only; your host does the restarting.
 * Message of the day — a rules panel on the welcome screen, your text and your banner.
@@ -30,7 +30,7 @@ Discord needs a webhook URL in the config; keep that channel staff-only.
 
 TWO THINGS TO KNOW
 
-Game Master is more power than every command here combined, and nothing done with it reaches Overwatch's log. gmTier sets who gets it — default 2 (Admin), 3 for Owners only, 0 to disable.
+Game Master is more power than every command here combined, and nothing done with it reaches Overwatch's log. Every tier gets it, Moderators too. Admin+ also get the engine admin role (adminTier).
 Spectate does not notify the target — covert by design, since an admin checking for cheating can't announce it. The log is the only record; set a disclosure policy first.
 
 Full docs and troubleshooting: https://github.com/Michael4170/Overwatch-Server-Admin-Toolkit
