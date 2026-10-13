@@ -7,6 +7,9 @@ and is consumed by the chat panel.
 Player arguments accept **partial names**, case-insensitive. `!ow heal bra` matches "Bravo".
 An ambiguous match is refused and lists the candidates rather than guessing.
 
+The one exception to the prefix is `/report`, the public command for players — see
+[Everyone](#everyone--no-tier-needed).
+
 Every command is checked server-side. The client never decides anything.
 
 ---
@@ -20,6 +23,43 @@ also means destructive commands cannot target yourself.
 
 Informational commands (`players`, `playerinfo`, `admins`, `bans`) are not restricted this
 way.
+
+---
+
+## Everyone — no tier needed
+
+| Command | Aliases | What it does |
+|---|---|---|
+| `/report <message>` | `!ow alert`, `!ow report` | sends an alert to your admins |
+
+`/report` is the only command a player without a tier can use. Type it in the chat box like
+`/ow`; it is consumed by the chat panel and never appears in global chat, so other players do
+not see it.
+
+```
+/report someone is teamkilling at the airfield
+```
+
+What happens:
+
+- The message is posted to the **alert** Discord channel, with the reporter's name, which staff
+  are in game, and the player count. Keep that channel staff-only.
+- Admins in game get an `[Overwatch] REPORT from <name>: ...` hint in their chat panel (this
+  can be turned off with `notifyOnlineStaff`).
+- The reporter gets a short confirmation. If no staff are in game and no alert webhook is set,
+  they are told reports are not available.
+
+Reports are rate-limited so they cannot be used to spam your staff:
+
+- a message that is empty or longer than `alertMaxLength` is refused;
+- a player must have been connected for at least `alertMinConnectedSeconds`;
+- there is a per-player cooldown and a server-wide cooldown between reports.
+
+Refused reports tell the player why, and every report — accepted or refused — is logged. Reports
+are not mirrored into the activity feed (they already go to the alert feed). Settings are in
+[Configuration.md](Configuration.md#discord).
+
+Tell your players it exists — put it in the MOTD or the scheduled chat messages.
 
 ---
 
@@ -161,7 +201,12 @@ Discord is off or the feed you asked for has no webhook. Setup is in
 
 When Discord is on, successful admin commands are also mirrored into the activity feed.
 Commands that only read — `help`, `admins`, `players`, `playerinfo`, `bans`, `menu` — and
-`discordtest` itself are never posted, and neither are refused or failed commands.
+`discordtest` itself are never posted, and neither are refused or failed commands. `/report`
+is not mirrored either, since it has its own alert feed.
+
+Activity-feed posts are sent **silently** (Discord's no-notification flag), so staff are not
+pinged on every join, leave or command. Alert posts are normal messages. Neither feed ever
+mentions anyone.
 
 ---
 
@@ -187,11 +232,11 @@ and the Ban button is **permanent**. A stray click writes a real permanent ban r
 
 ## Command count
 
-21 commands, registered at startup:
+22 commands, registered at startup:
 
 ```
-[Overwatch] Command router ready — 21 commands registered.
+[Overwatch] Command router ready — 22 commands registered.
 ```
 
-8 Moderator, 10 Admin, 3 Owner. If that number is not 21 in your log, you are running a
-different build than this document describes.
+1 public, 8 Moderator, 10 Admin, 3 Owner. If that number is not 22 in your log, you are
+running a different build than this document describes.
