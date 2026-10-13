@@ -7,26 +7,32 @@ Tiered admin tooling for Arma Reforger dedicated servers. Permissions are keyed 
 
 FEATURES
 
-* Three tiers — Moderator, Admin, Owner — 21 chat commands, filtered to what you can use.
+* Three tiers — Moderator, Admin, Owner — 22 chat commands, filtered to what you can use.
 * In-game admin menu on a keybind — live player list, click-to-action. Same permission checks as chat.
 * Spectate — follow any player through their camera.
 * Game Master — automatic for every tier; !ow gm grants it for one session.
 * Persistent bans — timed or permanent, survive restarts, revocable in game.
+* Player reports — any player can type /report <message> to alert your admins. Posts to a staff Discord channel and hints any admins in game. Rate-limited per player and server-wide, with a minimum time connected, so it can't be spammed.
+* Scheduled chat messages — a rotating list of announcements that appear in the normal global chat panel, at an interval you set.
 * Restart countdown — an on-screen timer before scheduled restarts. It warns only; your host does the restarting.
 * Message of the day — a rules panel on the welcome screen, your text and your banner.
-* Discord feed — joins, leaves and admin actions to a staff channel.
+* Discord feed — joins, leaves and admin actions to a staff channel. Posts silently (no notification), and never mentions anyone.
 * Full server-side logging — every action records the actor, the target and both UIDs.
 
 COMMANDS
 
-Moderator: help, admins, heal, players, playerinfo, broadcast, bans, menu Admin: kill, goto, bring, spectate, unspectate, kick, ban, unban, gm, ungm Owner: grant, revoke, discordtest
-Type !ow help in game for your tier's list. !ow and /ow both work; !ow is hidden from other players.
+Everyone: report
+Moderator: help, admins, heal, players, playerinfo, broadcast, bans, menu
+Admin: kill, goto, bring, spectate, unspectate, kick, ban, unban, gm, ungm
+Owner: grant, revoke, discordtest
+
+Type !ow help in game for your tier's list. !ow and /ow both work; !ow is hidden from other players. /report is the one command open to everyone.
 
 SETUP
 
 Nothing to wire up — Overwatch extends the base game mode prefab. First start writes template configs and logs their paths. Add your UID as tier 3, restart, done.
-Overwatch fails closed: a bad config grants nobody anything and says so. Countdown, MOTD and Discord ship off.
-Discord needs a webhook URL in the config; keep that channel staff-only.
+Overwatch fails closed: a bad config grants nobody anything and says so. Countdown, MOTD, Discord and chat messages ship off.
+Discord needs webhook URLs in the config (one for the activity feed, one for report alerts); keep those channels staff-only.
 
 TWO THINGS TO KNOW
 
