@@ -7,7 +7,7 @@ client.
 |---|---|---|
 | `Overwatch_Admins.json` | tiers and the `adminTier` threshold | **yes** — rewritten on every grant/revoke |
 | `Overwatch_Bans.json` | active bans | **yes** |
-| `Overwatch_Config.json` | optional features: restart countdown, MOTD | **no** — created once, then read only |
+| `Overwatch_Config.json` | optional features: restart countdown, MOTD, Discord, chat messages | **only at startup**, to add new settings — never while running, and your values are always kept |
 
 That last column is the important one and is explained under
 [Two traps that will cost you an evening](#two-traps-that-will-cost-you-an-evening).
@@ -164,9 +164,11 @@ content field empty**, so a fresh install changes nothing until you decide other
 This file is yours, and hand-editing it is always safe — unlike `Overwatch_Admins.json`. See
 the traps section below for why that distinction exists.
 
-Overwatch rewrites it in exactly **one** case: when a new version adds a settings block your
-file does not have yet. See [Upgrading](#upgrading-an-older-config) below. It never touches a
-file it could not parse, and it never changes a value you set.
+Overwatch rewrites it in exactly **one** case: at server start, when the file does not match
+the layout the current version writes — typically because an update added a block or a field
+you do not have yet. See [Upgrading](#upgrading-an-older-config) below. It never touches a
+file it could not parse, never rewrites it while the server is running, and never changes a
+value you set.
 
 ```json
 {
@@ -209,12 +211,19 @@ file it could not parse, and it never changes a value you set.
     "logAdminActions": true,
     "showUids": false,
     "batchSeconds": 10
+  },
+
+  "announcements": {
+    "enabled": false,
+    "intervalSeconds": 600,
+    "messages": []
   }
 }
 ```
 
-If your config predates the Discord release it will have no `discord` block. Overwatch adds it
-for you on the next start, keeping everything else — see [Upgrading](#upgrading-an-older-config).
+If your config predates a release it will be missing that release's block or fields. Overwatch
+adds them for you on the next start, keeping everything else — see
+[Upgrading](#upgrading-an-older-config).
 
 ### Restart countdown
 
@@ -322,8 +331,8 @@ Two webhooks, two purposes. Both optional, and each works without the other.
 
 | Feed | What goes in it | Timing |
 |---|---|---|
-| `alertWebhook` | player alerts raised in game | **immediate** |
-| `activityWebhook` | joins, leaves, admin actions | batched every `batchSeconds` |
+| `alertWebhook` | player reports raised with `/report` | **immediate** |
+| `activityWebhook` | joins, leaves, admin actions | batched every `batchSeconds`, **posted silently** |
 
 **Why two and not one.** An alert staff are meant to react to cannot share a channel with a
 stream of joins and leaves. The alert gets buried, staff stop reading the channel, and the
@@ -348,23 +357,43 @@ the channel permissions in Discord yourself.
 Overwatch never pings anyone. Every post it makes has Discord's mention parsing switched off
 entirely, so a player cannot get `@everyone` into your Discord through an alert.
 
+**Activity posts are also silent.** They are sent with Discord's no-notification flag, so staff
+do not get a phone buzz for every join, leave or admin command. They still appear in the
+channel. Alert posts from `/report` are normal messages, so they do notify, which is the point
+of them.
+
 #### Fields
 
 | Field | Meaning |
 |---|---|
 | `enabled` | master switch. Ships `false`. |
-| `alertWebhook` | webhook URL for player alerts. Empty disables that feed. |
+| `alertWebhook` | webhook URL for player reports. Empty disables that feed. |
 | `activityWebhook` | webhook URL for the activity feed. Empty disables that feed. |
 | `serverName` | shown in the Discord message, so one channel can serve several servers. |
 | `announceStartup` | post a line when the server starts. Cheap proof the integration still works, every restart. Goes to the activity feed. |
 | `logJoins` / `logLeaves` | join and leave lines in the activity feed. |
 | `logAdminActions` | admin commands that **changed** something. Read-only commands like `!ow players` are never posted. |
+| `alertCooldownSeconds` | minimum time between two reports from the **same player**. Default `300`. |
+| `alertGlobalCooldownSeconds` | minimum time between reports from **anyone**. Default `60`. |
+| `alertMinConnectedSeconds` | a player must have been connected this long before they can report. Default `60`. Stops join, report, leave, repeat. |
+| `alertMaxLength` | longest report message accepted, in characters. Default `300`. |
+| `notifyOnlineStaff` | also show each report to staff currently in game, as an `[Overwatch] REPORT from ...` line in their chat panel. Default `true`. |
 | `showUids` | include player UIDs. **Off by default** — the activity channel is usually visible to more people than the alert channel, and a UID is an account identifier. Turn it on if your staff copy UIDs out of Discord for ban commands. |
 | `batchSeconds` | how often the activity queue is flushed. Clamped to 1–300. |
 
-The alert abuse controls — `alertCooldownSeconds`, `alertGlobalCooldownSeconds`,
-`alertMinConnectedSeconds`, `alertMaxLength`, `notifyOnlineStaff` — belong to the player alert
-command and are documented with it.
+#### Player reports (`/report`)
+
+Any player can type `/report <message>` in the chat box (see [Commands.md](Commands.md)). The
+alert abuse controls above decide who may report and how often. A refused report tells the
+player why and is logged as `ALERT REFUSED (reason)`; an accepted one is logged as
+`ALERT ACCEPTED`, with how many staff were in game and whether the Discord post went out.
+
+A report posts the reporter's name, which staff are in game (or "none in game"), the player
+count and the message. If there is no `alertWebhook` **and** no staff in game to see the hint,
+the player is told reports are not available, rather than being told it worked.
+
+Tell your players the command exists. It does nothing for a community that does not know about
+it. The MOTD and the chat messages below are the natural places.
 
 #### `batchSeconds` is not a performance tuning knob
 
@@ -397,44 +426,77 @@ where the answer is.** Every failure gets a line naming the cause:
 
 ---
 
-### Upgrading an older config
+### Chat messages
 
-When a new version of Overwatch adds a settings block — as the Discord release did — your
-existing config does not have it. The mod still runs, because missing settings fall back to
-their defaults internally. But **the keys are not in your file**, so there is nothing to edit
-to switch the new feature on.
+A rotating list of messages shown in the **normal global chat panel**, where players type, at a
+fixed interval. Use it for reminders: Discord link, rules, how to `/report`.
 
-Overwatch fixes that for you. On the first start after upgrading:
+| Field | Meaning |
+|---|---|
+| `enabled` | master switch. Ships `false`. |
+| `intervalSeconds` | seconds between messages. Ships `600` (ten minutes). |
+| `messages` | the messages, in order. One is shown each interval, then it moves to the next and loops. |
 
-1. It notices the block is missing.
-2. It copies your current file to `Overwatch_Config.json.bak`.
-3. It rewrites `Overwatch_Config.json` with the new block added at its defaults, and **every
-   value you had set left exactly as it was**.
-4. It says so in the log, naming which block was added.
+```json
+"announcements": {
+  "enabled": true,
+  "intervalSeconds": 600,
+  "messages": [
+    "Join our Discord: discord.gg/example",
+    "Seeing a problem? Type /report <message> to alert the admins.",
+    "Rules are on the welcome screen. Be kind to your squad."
+  ]
+}
+```
+
+- Messages appear as a plain line in each player's chat panel with no sender name.
+- Keep each message under 300 characters; the startup log warns about ones that are too long.
+- Nothing is sent while the server is empty, and the rotation does not skip ahead during that
+  time.
+- It is separate from `!ow broadcast`, which is a one-off message an admin sends by hand.
+
+The startup log confirms it:
 
 ```
-CONFIG: added the discord block(s) to $profile:Overwatch_Config.json with default
-values — your existing settings were kept, and the previous file was saved as
-$profile:Overwatch_Config.json.bak. Edit the new block and restart to use it.
+[Overwatch] Announcements ON — 3 message(s), one every 600 seconds, shown in the chat panel.
 ```
 
-Then edit the new block and restart. **You do not need to delete your config** — doing that
-throws away your MOTD text and restart times, which is exactly what this exists to prevent.
-
-Three things worth knowing:
-
-- **It only runs when a whole block is missing.** A complete file is never rewritten, so this
-  does not churn a backup on every server start.
-- **It never touches a config it could not parse.** A file with a typo in it still fails loudly
-  and is left alone, so a broken file is never replaced by one you did not write.
-- **Your file gets reformatted** to Overwatch's standard layout — same keys, same values, tidier
-  indentation. If you keep your own formatting, `Overwatch_Config.json.bak` has it.
-
-Individual *fields* added to an existing block are not backfilled the same way; they take their
-default silently and will not appear in your file. The field tables on this page are the
-reference for what exists.
+Each message sent logs `ANNOUNCE: message N of M sent to X player(s).`
 
 ---
+
+### Upgrading an older config
+
+When a new version of Overwatch adds a settings block or a field — as the Discord and chat
+message releases did — your existing config does not have it. The mod still runs, because
+missing settings fall back to their defaults internally. But **the keys are not in your file**,
+so there is nothing to edit to switch the new feature on.
+
+Overwatch fixes that for you. On every server start it builds the file it would write from the
+settings it just loaded, and compares that with what is on disk:
+
+- **They match:** nothing happens. No rewrite, no backup.
+- **They differ** (new block, new field, old formatting): it copies your current file to
+  `Overwatch_Config.json.bak`, then rewrites `Overwatch_Config.json` with the new settings at
+  their defaults and **every value you had set left exactly as it was**. It says so in the
+  log.
+
+Then edit the new settings and restart. **You do not need to delete your config** — doing that
+throws away your MOTD text and restart times, which is exactly what this exists to prevent.
+
+Things worth knowing:
+
+- **It runs at startup only.** Overwatch never rewrites the file while the server is running, so
+  editing it live is safe. Changes still need a restart.
+- **It settles after one rewrite.** The next start finds the file matching and leaves it alone,
+  so the `.bak` is not overwritten on every start. If you see it rewrite on *every* start,
+  something is wrong; please report it.
+- **It never touches a config it could not parse.** A file with a typo in it still fails loudly
+  and is left alone, so a broken file is never replaced by one you did not write.
+- **It will not rewrite if it cannot save the backup.** If `.bak` cannot be written, your file
+  is left exactly as it is and the log says so.
+- **Your file gets reformatted** to Overwatch's standard layout — same keys, same values, tidier
+  indentation. Your own comments or spacing are not kept. `Overwatch_Config.json.bak` has them.
 
 ---
 
@@ -452,8 +514,9 @@ revoke, your edit is silently overwritten. No error. No warning. The file just r
 
 If you must change something live, use the commands rather than the file.
 
-**`Overwatch_Config.json` is deliberately exempt.** Overwatch only ever creates it, never
-rewrites it, which is precisely so that the file you edit by hand is safe from this. The two
+**`Overwatch_Config.json` is deliberately exempt.** Overwatch never rewrites it while the
+server is running — only once at startup, to add new settings (see
+[Upgrading](#upgrading-an-older-config)) — so a hand edit made live is safe from this. The two
 files are separated for that reason — roster data the mod owns, feature settings you own.
 Changes to it still need a restart to take effect.
 
@@ -485,7 +548,8 @@ feature stays off.
 | Player not signed in | denied, logged as `not signed in` |
 | `Overwatch_Config.json` missing | template written with everything off, logged, nothing enabled |
 | `Overwatch_Config.json` malformed | **not overwritten**, error logged, all optional features off |
-| A settings block missing after an upgrade | block added at defaults, your values kept, previous file saved as `.bak` |
+| A settings block or field missing after an upgrade | added at defaults at startup, your values kept, previous file saved as `.bak` |
+| `.bak` cannot be written | your config is left untouched and the log says so |
 | Restart time unparseable | countdown disabled, the offending value named in the log |
 | MOTD enabled but empty | MOTD disabled rather than showing an empty panel |
 | `discord` block missing entirely | Discord off, logged, everything else loads normally |
@@ -526,6 +590,7 @@ OW_ConfigManagerComponent
 OW_MotdComponent
 OW_RestartSchedulerComponent
 OW_DiscordComponent
+OW_AnnouncementsComponent
 ```
 
 Loading the mod is the whole installation. Any game mode built on `GameMode_Base` picks them
@@ -539,5 +604,5 @@ hand.
 Confirm the mod is live by looking for the startup banner:
 
 ```
-[Overwatch] Command router ready — 21 commands registered.
+[Overwatch] Command router ready — 22 commands registered.
 ```
